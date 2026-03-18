@@ -1,43 +1,46 @@
 import requests
 
-def buscar_alimento(codigo_de_barras):
-    # 1. A URL da API pública apontando para o produto específico
+def calcular_nutrientes(codigo_de_barras, peso_consumido):
     url = f"https://world.openfoodfacts.org/api/v0/product/{codigo_de_barras}.json"
-    
-    # 2. Fazendo o pedido (requisição GET) para a API
     resposta = requests.get(url)
     
-    # 3. Verificando se a comunicação com o servidor deu certo (Status 200 = Sucesso)
     if resposta.status_code == 200:
         dados = resposta.json()
         
-        # A API retorna 'status': 1 se encontrou o produto, e 0 se não encontrou
         if dados.get('status') == 1:
             produto = dados['product']
-            
-            # 4. Extraindo as informações específicas
-            # Usamos o .get() para evitar erros caso o produto não tenha essa informação cadastrada
             nome = produto.get('product_name', 'Nome não disponível')
             nutrientes = produto.get('nutriments', {})
             
-            # A base de dados geralmente padroniza os valores para cada 100 gramas
-            carboidratos = nutrientes.get('carbohydrates_100g', 0)
-            proteinas = nutrientes.get('proteins_100g', 0)
-            gordura = nutrientes.get('fat_100g',0)
-            sodio = nutrientes.get('sodium_100g', 0)
+            # Pegando os valores base (por 100g)
+            carb_100g = nutrientes.get('carbohydrates_100g', 0)
+            prot_100g = nutrientes.get('proteins_100g', 0)
+            gordura_100g = nutrientes.get('fat_100g', 0) 
+            sodio_100g = nutrientes.get('sodium_100g', 0)
             
-            print(f"--- Produto Encontrado ---")
-            print(f"Nome: {nome}")
-            print(f"Carboidratos (por 100g): {carboidratos}g")
-            print(f"Proteínas (por 100g): {proteinas}g")
-            print(f"Gorduras(por 100g):{gordura}g")
-            print(f"Sódio (por 100g): {sodio}g")
+            # Calculando a proporção exata pelo peso
+            peso = float(peso_consumido)
+            carb_real = (carb_100g / 100) * peso
+            prot_real = (prot_100g / 100) * peso
+            gordura_real = (gordura_100g / 100) * peso 
+            sodio_real = (sodio_100g / 100) * peso
+            
+            # Exibindo o resultado final
+            print(f"\n--- Resumo do Consumo: {nome} ---")
+            print(f"Porção ingerida: {peso}g")
+            print(f"Carboidratos: {carb_real:.2f}g")
+            print(f"Proteínas: {prot_real:.2f}g")
+            print(f"Gorduras: {gordura_real:.2f}g")
+            print(f"Sódio: {sodio_real:.2f}g")
             
         else:
-            print("Produto não encontrado na base de dados do Open Food Facts.")
+            print("Produto não encontrado na base de dados.")
     else:
         print(f"Erro ao acessar a API. Código HTTP: {resposta.status_code}")
 
-# Vamos testar com o código de barras da Nutella (como exemplo universal)
-codigo_teste = "3017620422003" 
-buscar_alimento(codigo_teste)
+# --- Interação principal do programa ---
+codigo_teste = "3017620422003" # Código da Nutella
+print("Produto lido: Nutella")
+peso_input = input("Quantas gramas você consumiu? (Digite apenas números, ex: 30): ")
+
+calcular_nutrientes(codigo_teste, peso_input)

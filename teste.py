@@ -3,20 +3,20 @@ import sqlite3
 from datetime import datetime
 
 # --- 1. Nova Função: Salvar no Banco ---
-def salvar_no_banco(refeicao, nome_alimento, peso, carb, prot, gord, sodio):
+def salvar_no_banco(refeicao, nome_alimento, peso, calorias, carb, prot, gord, sodio):
     # Conecta ao arquivo que você acabou de criar
     conexao = sqlite3.connect('nutridata.db')
     cursor = conexao.cursor()
-    
+
     # Pega a data e hora exata de agora
     data_atual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     # O comando SQL para INSERIR os dados. As interrogações (?) são uma medida de segurança.
     cursor.execute('''
         INSERT INTO historico_consumo 
-        (data_registro, refeicao, nome_alimento, porcao_g, carboidratos, proteinas, gorduras, sodio)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data_atual, refeicao, nome_alimento, peso, carb, prot, gord, sodio))
+        (data_registro, refeicao, nome_alimento, porcao_g, calorias, carboidratos, proteinas, gorduras, sodio)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (data_atual, refeicao, nome_alimento, peso, calorias, carb, prot, gord, sodio))
     
     conexao.commit()
     conexao.close()
@@ -36,12 +36,14 @@ def calcular_nutrientes(codigo_de_barras, peso_consumido, tipo_refeicao):
             nome = produto.get('product_name', 'Nome não disponível')
             nutrientes = produto.get('nutriments', {})
             
+            calorias_100g = nutrientes.get('energy-kcal_100g')
             carb_100g = nutrientes.get('carbohydrates_100g', 0)
             prot_100g = nutrientes.get('proteins_100g', 0)
             gordura_100g = nutrientes.get('fat_100g', 0) 
             sodio_100g = nutrientes.get('sodium_100g', 0)
             
             peso = float(peso_consumido)
+            calorias_real = (calorias_100g/100)*peso
             carb_real = (carb_100g / 100) * peso
             prot_real = (prot_100g / 100) * peso
             gordura_real = (gordura_100g / 100) * peso 
@@ -49,6 +51,7 @@ def calcular_nutrientes(codigo_de_barras, peso_consumido, tipo_refeicao):
             
             print(f"\n--- Resumo do Consumo: {nome} ---")
             print(f"Porção ingerida: {peso}g")
+            print(f"🔥 Calorias: {calorias_real:.2f} kcal")
             print(f"Carboidratos: {carb_real:.2f}g")
             print(f"Proteínas: {prot_real:.2f}g")
             print(f"Gorduras: {gordura_real:.2f}g")
@@ -56,7 +59,7 @@ def calcular_nutrientes(codigo_de_barras, peso_consumido, tipo_refeicao):
             print("-" * 30)
             
             # 👇 AQUI ESTÁ A MÁGICA: Chamamos a função de salvar passando todos os dados calculados
-            salvar_no_banco(tipo_refeicao, nome, peso, carb_real, prot_real, gordura_real, sodio_real)
+            salvar_no_banco(tipo_refeicao, nome, peso, calorias_real, carb_real, prot_real, gordura_real, sodio_real)
             
         else:
             print("Produto não encontrado na base de dados.")

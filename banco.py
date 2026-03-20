@@ -15,6 +15,7 @@ def criar_banco_de_dados():
             refeicao TEXT NOT NULL,
             nome_alimento TEXT NOT NULL,
             porcao_g REAL,
+            calorias REAL,
             carboidratos REAL,
             proteinas REAL,
             gorduras REAL,

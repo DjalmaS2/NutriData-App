@@ -9,18 +9,15 @@ def criar_banco_de_dados():
     
     # 3. Executando o comando SQL para criar a nossa tabela
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS historico_consumo (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data_registro TEXT NOT NULL,
-            refeicao TEXT NOT NULL,
-            nome_alimento TEXT NOT NULL,
-            porcao_g REAL,
-            calorias REAL,
-            carboidratos REAL,
-            proteinas REAL,
-            gorduras REAL,
-            sodio REAL
-        )
+    CREATE TABLE IF NOT EXISTS meus_alimentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome_alimento TEXT NOT NULL,
+        porcao_g REAL,
+        calorias REAL,
+        carboidratos REAL,
+        proteinas REAL,
+        gorduras REAL
+    )
     ''')
     
     # 4. Salva as alterações e fecha a porta do banco

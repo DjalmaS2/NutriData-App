@@ -4,6 +4,8 @@ import pandas as pd
 import requests
 from datetime import datetime
 import plotly.express as px
+from PIL import Image
+from pyzbar.pyzbar import decode
 
 # --- 1. CONFIGURAÇÕES VISUAIS ---
 st.set_page_config(page_title="NutriData Pro", layout="wide", page_icon="🍏")
@@ -17,11 +19,10 @@ ALIMENTOS_SALVOS = {
     "Digitar Novo Código...": "novo"
 }
 
-# --- 3. FUNÇÕES DO BACKEND ---
+# --- 3. FUNÇÕES DO BACKEND (Todas as funções devem ficar aqui em cima!) ---
 def salvar_no_banco(refeicao, nome, peso, calorias, carb, prot, gord, sodio):
     conexao = sqlite3.connect('nutridata.db')
     cursor = conexao.cursor()
-    # Salvando Ano-Mês-Dia Hora:Minuto
     data_atual = datetime.now().strftime('%Y-%m-%d %H:%M')
     cursor.execute('''
         INSERT INTO historico_consumo 
@@ -52,14 +53,11 @@ def carregar_dados():
     conexao = sqlite3.connect('nutridata.db')
     df = pd.read_sql_query("SELECT * FROM historico_consumo", conexao)
     conexao.close()
-    # --- MÁGICA DO PANDAS AQUI ---
     if not df.empty:
-        # Transforma a coluna de texto em formato oficial de Data do Python
         df['data_registro'] = pd.to_datetime(df['data_registro'])
-        # Cria uma nova coluna separando apenas o DIA (ignorando a hora) para o filtro
         df['data_apenas'] = df['data_registro'].dt.date 
     return df
-#Exluir caso queria
+
 def deletar_do_banco(id_registro):
     conexao = sqlite3.connect('nutridata.db')
     cursor = conexao.cursor()
@@ -67,61 +65,114 @@ def deletar_do_banco(id_registro):
     conexao.commit()
     conexao.close()
 
+def ler_codigo_da_imagem(imagem_camera):
+    img = Image.open(imagem_camera)
+    codigos = decode(img)
+    if codigos:
+        return codigos[0].data.decode('utf-8')
+    return None
+
+def carregar_meus_alimentos():
+    conexao = sqlite3.connect('nutridata.db')
+    try:
+        df_meus = pd.read_sql_query("SELECT * FROM meus_alimentos", conexao)
+    except:
+        df_meus = pd.DataFrame() 
+    conexao.close()
+    return df_meus
+
 # --- 4. BARRA LATERAL (Interface de Entrada) ---
 with st.sidebar:
     st.header("🍽️ Adicionar Refeição")
     refeicao_input = st.selectbox("Refeição:", ["Café da Manhã", "Almoço", "Lanche", "Jantar"])
-    opcao_alimento = st.selectbox("Escolha um alimento salvo:", list(ALIMENTOS_SALVOS.keys()))
+    peso_input = st.number_input("Peso consumido (g):", min_value=1.0, value=100.0, step=10.0)
     
-    if opcao_alimento == "Digitar Novo Código...":
-        codigo_input = st.text_input("Digite o Código de Barras:")
-    else:
-        codigo_input = ALIMENTOS_SALVOS[opcao_alimento]
-        
-    peso_input = st.number_input("Peso (g):", min_value=1.0, value=100.0, step=10.0)
+    aba_scan, aba_api, aba_meus = st.tabs(["📷 Câmera", "🔍 Digitar", "⭐ Meus Pratos"])
     
-    if st.button("Salvar no Banco", use_container_width=True):
-        if codigo_input and codigo_input != "novo":
-            sucesso, nome_registrado = registrar_alimento(codigo_input, float(peso_input), refeicao_input)
-            if sucesso:
-                st.success(f"✅ {nome_registrado} registrado!")
-            else:
-                st.error("❌ Produto não encontrado na API.")
-        else:
-            st.warning("⚠️ Informe um código válido.")
+    with aba_scan:
+        # 1. Cria a memória do botão (começa desligado)
+        if 'usar_camera' not in st.session_state:
+            st.session_state.usar_camera = False
 
-# --- 5. O DASHBOARD VISUAL (Agora com Filtros!) ---
+        # 2. O Botão que liga e desliga
+        if st.button("📸 Ligar / Desligar Câmera", width="stretch"):
+            # Inverte o estado (se tá ligado, desliga. Se tá desligado, liga)
+            st.session_state.usar_camera = not st.session_state.usar_camera
+            st.rerun()
+
+        # 3. Só mostra a câmera SE o botão estiver ligado
+        if st.session_state.usar_camera:
+            st.write("Aponte o código de barras para a câmera:")
+            foto = st.camera_input("Scanear", label_visibility="collapsed")
+            
+            if foto is not None:
+                codigo_scaneado = ler_codigo_da_imagem(foto)
+                if codigo_scaneado:
+                    st.success(f"Código lido: {codigo_scaneado}")
+                    if st.button("Buscar e Salvar", key="btn_scan", width="stretch"):
+                        sucesso, nome = registrar_alimento(codigo_scaneado, float(peso_input), refeicao_input)
+                        if sucesso: 
+                            st.success(f"✅ {nome} salvo!")
+                            # Opcional: Desliga a câmera automaticamente após salvar
+                            st.session_state.usar_camera = False
+                            st.rerun()
+                        else: 
+                            st.error("❌ Produto não achado na API.")
+                else:
+                    st.warning("Nenhum código detectado. Tente aproximar ou melhorar o foco.")
+        else:
+            # Mensagem quando a câmera estiver escondida
+            st.info("Câmera em modo de economia. Clique no botão acima para usar.")
+
+    with aba_api:
+        codigo_input = st.text_input("Digite o Código de Barras:")
+        if st.button("Buscar e Salvar", key="btn_api", width="stretch"):
+            sucesso, nome = registrar_alimento(codigo_input, float(peso_input), refeicao_input)
+            if sucesso: st.success(f"✅ {nome} salvo!")
+            else: st.error("❌ Produto não achado na API.")
+
+    with aba_meus:
+        df_meus = carregar_meus_alimentos()
+        if df_meus.empty:
+            st.info("Você ainda não tem pratos customizados salvos no banco.")
+        else:
+            prato_escolhido = st.selectbox("Escolha seu prato:", df_meus['nome_alimento'].tolist())
+            if st.button("Salvar Refeição Rápida", width="stretch"):
+                prato_dados = df_meus[df_meus['nome_alimento'] == prato_escolhido].iloc[0]
+                fator = float(peso_input) / prato_dados['porcao_g']
+                salvar_no_banco(
+                    refeicao_input, prato_escolhido, peso_input,
+                    prato_dados['calorias'] * fator, prato_dados['carboidratos'] * fator,
+                    prato_dados['proteinas'] * fator, prato_dados['gorduras'] * fator, 0
+                )
+                st.success(f"✅ {prato_escolhido} adicionado à dieta!")
+                st.rerun()
+
+# --- 5. O DASHBOARD VISUAL ---
 df = carregar_dados()
 
 if df.empty:
     st.info("👈 Use o menu lateral esquerdo para adicionar sua primeira refeição!")
 else:
-    # 5.1 Filtros Superiores
     st.subheader("📅 Controle Diário")
     col_calendario, col_meta = st.columns(2)
     
     with col_calendario:
-        # Pega a data de hoje para o calendário já abrir no dia certo
         data_hoje = datetime.now().date()
         dia_selecionado = st.date_input("Filtrar por data:", data_hoje)
         
     with col_meta:
-        # Define a meta calórica
         meta_calorias = st.number_input("Sua Meta Diária (kcal):", min_value=500, value=2000, step=100)
 
-    # Aplica o filtro: cria uma tabela nova contendo SÓ o que foi comido no dia selecionado
     df_dia = df[df['data_apenas'] == dia_selecionado]
 
     if df_dia.empty:
         st.warning(f"Nenhuma refeição registrada para o dia {dia_selecionado.strftime('%d/%m/%Y')}.")
     else:
-        # 5.2 Barra de Progresso Inteligente
         total_calorias_dia = df_dia['calorias'].sum()
         porcentagem = total_calorias_dia / meta_calorias
         
         st.markdown(f"**Progresso:** {total_calorias_dia:.0f} kcal consumidas de {meta_calorias} kcal.")
-        
-        # Limita a barra em 1.0 (100%) para o Streamlit não dar erro se você comer demais
         st.progress(min(porcentagem, 1.0))
         
         if porcentagem > 1.0:
@@ -133,7 +184,6 @@ else:
             
         st.divider()
 
-        # 5.3 Cartões de Métricas (Agora usando apenas os dados do dia!)
         st.subheader(f"📊 Resumo do Dia ({dia_selecionado.strftime('%d/%m')})")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("🔥 Calorias", f"{df_dia['calorias'].sum():.0f} kcal")
@@ -143,7 +193,6 @@ else:
         
         st.divider()
         
-        # 5.4 Gráficos (Atualizados para o dia)
         grafico1, grafico2 = st.columns(2)
         with grafico1:
             st.subheader("Proporção da Dieta")
@@ -151,11 +200,10 @@ else:
                 'Nutriente': ['Carboidratos', 'Proteínas', 'Gorduras'],
                 'Gramas': [df_dia['carboidratos'].sum(), df_dia['proteinas'].sum(), df_dia['gorduras'].sum()]
             })
-            # Só renderiza o gráfico de rosca se houver macronutrientes maiores que zero
             if df_macros['Gramas'].sum() > 0:
                 fig_pie = px.pie(df_macros, values='Gramas', names='Nutriente', hole=0.5,
                                  color_discrete_sequence=['#FF9999', '#66B2FF', '#99FF99'])
-                st.plotly_chart(fig_pie, use_container_width=True)
+                st.plotly_chart(fig_pie, width="stretch")
             else:
                 st.info("Não há dados de macronutrientes suficientes para este gráfico.")
             
@@ -163,30 +211,24 @@ else:
             st.subheader("Calorias por Refeição")
             df_agrupado = df_dia.groupby('refeicao')['calorias'].sum().reset_index()
             fig_bar = px.bar(df_agrupado, x='refeicao', y='calorias', color='refeicao')
-            st.plotly_chart(fig_bar, use_container_width=True)
-            # --- 5.5 Área de Gerenciamento (DELETAR) ---
+            st.plotly_chart(fig_bar, width="stretch")
+            
         st.divider()
         st.subheader("🗑️ Gerenciar Registros do Dia")
         
-        # Pega todos os IDs registrados no dia selecionado
         lista_ids = df_dia['id'].tolist()
-        
         if len(lista_ids) > 0:
             col_select, col_botao = st.columns([3, 1])
-            
             with col_select:
-                # Cria a caixa de seleção mostrando o ID e o Nome do alimento
                 id_para_deletar = st.selectbox(
                     "Selecione a refeição que deseja apagar:", 
                     options=lista_ids,
                     format_func=lambda x: f"ID {x} - {df_dia[df_dia['id'] == x]['nome_alimento'].values[0]} ({df_dia[df_dia['id'] == x]['porcao_g'].values[0]}g)"
                 )
-                
             with col_botao:
-                st.write("") # Dá um pequeno espaço para alinhar com a caixa ao lado
+                st.write("") 
                 st.write("")
-                # Se o botão for clicado, roda a função e reinicia a página
-                if st.button("❌ Apagar Registro", use_container_width=True):
+                if st.button("❌ Apagar Registro", width="stretch"):
                     deletar_do_banco(id_para_deletar)
                     st.success("Apagado com sucesso!")
-                    st.rerun() # Essa função do Streamlit atualiza a tela na hora!
+                    st.rerun()

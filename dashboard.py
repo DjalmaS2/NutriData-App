@@ -13,6 +13,7 @@ except (ImportError, OSError):
 
 import api
 import db
+import metas
 import taco
 
 # --- 1. CONFIGURAÇÕES VISUAIS ---
@@ -153,7 +154,34 @@ with st.sidebar:
                 st.success(f"✅ {prato_escolhido} adicionado à dieta!")
                 st.rerun()
 
+    st.divider()
+    perfil = db.carregar_perfil()
+    # O perfil fica aberto enquanto não foi preenchido, para chamar a atenção
+    with st.expander("👤 Meu Perfil", expanded=perfil is None):
+        atual = perfil or {}
+        opcoes_atividade = list(metas.FATORES_ATIVIDADE)
+        opcoes_objetivo = list(metas.AJUSTE_OBJETIVO)
+        with st.form("form_perfil"):
+            sexo = st.radio("Sexo:", ["Feminino", "Masculino"], horizontal=True,
+                            index=["Feminino", "Masculino"].index(atual.get('sexo', "Feminino")))
+            idade = st.number_input("Idade:", min_value=14, max_value=100, value=atual.get('idade', 30))
+            peso = st.number_input("Peso (kg):", min_value=30.0, max_value=300.0,
+                                   value=float(atual.get('peso_kg', 70.0)), step=0.5)
+            altura = st.number_input("Altura (cm):", min_value=100.0, max_value=230.0,
+                                     value=float(atual.get('altura_cm', 170.0)), step=1.0)
+            atividade = st.selectbox("Nível de atividade:", opcoes_atividade,
+                                     index=opcoes_atividade.index(atual.get('atividade', opcoes_atividade[0])))
+            objetivo = st.selectbox("Objetivo:", opcoes_objetivo,
+                                    index=opcoes_objetivo.index(atual.get('objetivo', "Manter peso")))
+            if st.form_submit_button("Salvar Perfil", width="stretch"):
+                db.salvar_perfil(sexo, idade, peso, altura, atividade, objetivo)
+                st.rerun()
+
 # --- 5. O DASHBOARD VISUAL ---
+# Meta calculada pelo perfil; sem perfil, usa 2000 kcal como padrão
+calculo_meta = metas.calcular_meta(perfil) if perfil else None
+meta_sugerida = round(calculo_meta['meta']) if calculo_meta else 2000
+
 df = db.carregar_historico()
 
 if df.empty:
@@ -167,7 +195,14 @@ else:
         dia_selecionado = st.date_input("Filtrar por data:", data_hoje)
         
     with col_meta:
-        meta_calorias = st.number_input("Sua Meta Diária (kcal):", min_value=500, value=2000, step=100)
+        meta_calorias = st.number_input("Sua Meta Diária (kcal):", min_value=500, value=meta_sugerida, step=50)
+        if calculo_meta:
+            st.caption(
+                f"Calculada pelo seu perfil: metabolismo basal {calculo_meta['tmb']:.0f} kcal · "
+                f"gasto diário {calculo_meta['gasto']:.0f} kcal · objetivo: {perfil['objetivo'].lower()}."
+            )
+        else:
+            st.caption("Preencha **👤 Meu Perfil** na barra lateral para calcular a sua meta.")
 
     df_dia = df[df['data_apenas'] == dia_selecionado]
 

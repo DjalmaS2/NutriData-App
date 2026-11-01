@@ -38,9 +38,14 @@ def criar_tabelas():
                 calorias REAL,
                 carboidratos REAL,
                 proteinas REAL,
-                gorduras REAL
+                gorduras REAL,
+                sodio REAL DEFAULT 0
             )
         ''')
+        # Bancos criados antes da coluna sodio existir ganham a coluna aqui
+        colunas = [c[1] for c in conexao.execute("PRAGMA table_info(meus_alimentos)")]
+        if 'sodio' not in colunas:
+            conexao.execute("ALTER TABLE meus_alimentos ADD COLUMN sodio REAL DEFAULT 0")
         # Só existe uma linha (id = 1): o perfil de quem usa o app
         conexao.execute('''
             CREATE TABLE IF NOT EXISTS perfil (
@@ -85,7 +90,23 @@ def deletar_consumo(id_registro):
 
 def carregar_meus_alimentos():
     with conectar() as conexao:
-        return pd.read_sql_query("SELECT * FROM meus_alimentos", conexao)
+        return pd.read_sql_query("SELECT * FROM meus_alimentos ORDER BY nome_alimento", conexao)
+
+
+def salvar_prato(nome, porcao_g, calorias, carb, prot, gord, sodio):
+    # Os valores são do prato inteiro; porcao_g é o peso total dele
+    with conectar() as conexao:
+        conexao.execute('''
+            INSERT INTO meus_alimentos (nome_alimento, porcao_g, calorias, carboidratos, proteinas, gorduras, sodio)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (nome, porcao_g, calorias, carb, prot, gord, sodio))
+        conexao.commit()
+
+
+def deletar_prato(id_prato):
+    with conectar() as conexao:
+        conexao.execute("DELETE FROM meus_alimentos WHERE id = ?", (id_prato,))
+        conexao.commit()
 
 
 def salvar_perfil(sexo, idade, peso_kg, altura_cm, atividade, objetivo):

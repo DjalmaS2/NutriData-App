@@ -3,10 +3,17 @@ import pandas as pd
 from datetime import datetime
 import plotly.express as px
 from PIL import Image
-from pyzbar.pyzbar import decode
+
+# No Windows o pyzbar precisa do "Visual C++ Redistributable 2013" instalado.
+# Se ele faltar, o app abre normalmente e só a aba da câmera fica desativada.
+try:
+    from pyzbar.pyzbar import decode
+except (ImportError, OSError):
+    decode = None
 
 import api
 import db
+import taco
 
 # --- 1. CONFIGURAÇÕES VISUAIS ---
 st.set_page_config(page_title="NutriData Pro", layout="wide", page_icon="🍏")
@@ -23,7 +30,15 @@ ALIMENTOS_SALVOS = {
     "Digitar Novo Código...": "novo"
 }
 
-# --- 3. FUNÇÕES DO BACKEND (a lógica de API e banco fica em api.py e db.py) ---
+# --- 3. FUNÇÕES DO BACKEND (a lógica de API, banco e TACO fica em api.py, db.py e taco.py) ---
+def salvar_produto(produto, peso, refeicao):
+    """Calcula a porção e salva no histórico. Serve para a API e para a TACO."""
+    porcao = api.calcular_porcao(produto, peso)
+    db.salvar_consumo(
+        refeicao, produto['nome'], peso, porcao['calorias'], porcao['carboidratos'],
+        porcao['proteinas'], porcao['gorduras'], porcao['sodio']
+    )
+
 def registrar_alimento(codigo_barras, peso, refeicao):
     """Busca o produto e salva no histórico. Retorna (sucesso, mensagem)."""
     try:
@@ -33,14 +48,12 @@ def registrar_alimento(codigo_barras, peso, refeicao):
     if produto is None:
         return False, "Produto não achado na API."
 
-    porcao = api.calcular_porcao(produto, peso)
-    db.salvar_consumo(
-        refeicao, produto['nome'], peso, porcao['calorias'], porcao['carboidratos'],
-        porcao['proteinas'], porcao['gorduras'], porcao['sodio']
-    )
+    salvar_produto(produto, peso, refeicao)
     return True, produto['nome']
 
 def ler_codigo_da_imagem(imagem_camera):
+    if decode is None:
+        return None
     img = Image.open(imagem_camera)
     codigos = decode(img)
     if codigos:
@@ -53,9 +66,35 @@ with st.sidebar:
     refeicao_input = st.selectbox("Refeição:", ["Café da Manhã", "Almoço", "Lanche", "Jantar"])
     peso_input = st.number_input("Peso consumido (g):", min_value=1.0, value=100.0, step=10.0)
     
-    aba_scan, aba_api, aba_meus = st.tabs(["📷 Câmera", "🔍 Digitar", "⭐ Meus Pratos"])
-    
+    aba_taco, aba_scan, aba_api, aba_meus = st.tabs(["🥦 Alimentos", "📷 Câmera", "🔍 Digitar", "⭐ Meus Pratos"])
+
+    with aba_taco:
+        # Alimentos sem código de barras (arroz, feijão, frutas...) vêm da Tabela TACO
+        termo = st.text_input("Buscar alimento:", placeholder="ex: arroz cozido, feijão, banana")
+        if termo:
+            resultados = taco.buscar(termo)
+            if resultados.empty:
+                st.warning("Nenhum alimento encontrado. Tente outra palavra.")
+            else:
+                id_escolhido = st.selectbox(
+                    f"{len(resultados)} resultado(s):",
+                    options=resultados['id'].tolist(),
+                    format_func=lambda x: resultados.loc[resultados['id'] == x, 'nome'].values[0]
+                )
+                produto = taco.como_produto(resultados[resultados['id'] == id_escolhido].iloc[0])
+                porcao = api.calcular_porcao(produto, peso_input)
+                st.caption(
+                    f"Em {peso_input:.0f} g: {porcao['calorias']:.0f} kcal · "
+                    f"C {porcao['carboidratos']:.1f} g · P {porcao['proteinas']:.1f} g · "
+                    f"G {porcao['gorduras']:.1f} g"
+                )
+                if st.button("Salvar Alimento", key="btn_taco", width="stretch"):
+                    salvar_produto(produto, float(peso_input), refeicao_input)
+                    st.success(f"✅ {produto['nome']} salvo!")
+
     with aba_scan:
+        if decode is None:
+            st.warning("Leitor de código de barras indisponível neste computador (pyzbar não carregou).")
         # 1. Cria a memória do botão (começa desligado)
         if 'usar_camera' not in st.session_state:
             st.session_state.usar_camera = False

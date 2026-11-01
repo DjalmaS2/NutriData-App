@@ -24,6 +24,8 @@ st.title("🍏 NutriData - Dashboard Inteligente")
 # Garante que as tabelas existem (essencial no primeiro acesso / no deploy)
 db.criar_tabelas()
 
+REFEICOES = ["Café da Manhã", "Almoço", "Lanche", "Jantar"]
+
 ALIMENTOS_SALVOS = {
     "Nutella": "3017620422003",
     "Coca-Cola Lata": "7894900011517",
@@ -64,7 +66,7 @@ def ler_codigo_da_imagem(imagem_camera):
 # --- 4. BARRA LATERAL (Interface de Entrada) ---
 with st.sidebar:
     st.header("🍽️ Adicionar Refeição")
-    refeicao_input = st.selectbox("Refeição:", ["Café da Manhã", "Almoço", "Lanche", "Jantar"])
+    refeicao_input = st.selectbox("Refeição:", REFEICOES)
     peso_input = st.number_input("Peso consumido (g):", min_value=1.0, value=100.0, step=10.0)
     
     aba_taco, aba_scan, aba_api, aba_meus = st.tabs(["🥦 Alimentos", "📷 Câmera", "🔍 Digitar", "⭐ Meus Pratos"])
@@ -183,10 +185,35 @@ with st.sidebar:
                 st.rerun()
 
 # --- 5. O DASHBOARD VISUAL ---
-def mostrar_dia(df, meta_calorias):
+def mostrar_agua(dia, perfil):
+    st.subheader("💧 Água")
+    meta_agua = metas.meta_agua_ml(perfil['peso_kg'] if perfil else None)
+    total = db.total_agua(dia)
+
+    col_info, col_botoes = st.columns([2, 3])
+    with col_info:
+        st.markdown(f"**{total / 1000:.2f} L** de {meta_agua / 1000:.1f} L")
+        st.progress(min(total / meta_agua, 1.0))
+    with col_botoes:
+        b1, b2, b3 = st.columns(3)
+        if b1.button("🥛 +250 ml", width="stretch"):
+            db.registrar_agua(dia, 250)
+            st.rerun()
+        if b2.button("🍶 +500 ml", width="stretch"):
+            db.registrar_agua(dia, 500)
+            st.rerun()
+        if b3.button("↩️ Desfazer", width="stretch", disabled=total == 0):
+            db.desfazer_agua(dia)
+            st.rerun()
+
+
+def mostrar_dia(df, meta_calorias, perfil):
     data_hoje = datetime.now().date()
     dia_selecionado = st.date_input("Filtrar por data:", data_hoje)
     df_dia = df[df['data_apenas'] == dia_selecionado]
+
+    mostrar_agua(dia_selecionado, perfil)
+    st.divider()
 
     if df_dia.empty:
         st.warning(f"Nenhuma refeição registrada para o dia {dia_selecionado.strftime('%d/%m/%Y')}.")
@@ -208,12 +235,21 @@ def mostrar_dia(df, meta_calorias):
     st.divider()
 
     st.subheader(f"📊 Resumo do Dia ({dia_selecionado.strftime('%d/%m')})")
+    # As metas de macros acompanham a meta calórica (inclusive se ela for mudada à mão)
+    meta_macros = metas.calcular_macros(meta_calorias, perfil['peso_kg'] if perfil else None)
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("🔥 Calorias", f"{df_dia['calorias'].sum():.0f} kcal")
-    col2.metric("🍞 Carboidratos", f"{df_dia['carboidratos'].sum():.0f} g")
-    col3.metric("🍗 Proteínas", f"{df_dia['proteinas'].sum():.0f} g")
-    col4.metric("🥑 Gorduras", f"{df_dia['gorduras'].sum():.0f} g")
+    col1.metric("🔥 Calorias", f"{total_calorias_dia:.0f} kcal")
+    col1.caption(f"meta {meta_calorias} kcal")
+    for coluna, nome, chave in [(col2, "🍞 Carboidratos", 'carboidratos'),
+                                (col3, "🍗 Proteínas", 'proteinas'),
+                                (col4, "🥑 Gorduras", 'gorduras')]:
+        consumido, meta = df_dia[chave].sum(), meta_macros[chave]
+        coluna.metric(nome, f"{consumido:.0f} g")
+        coluna.progress(min(consumido / meta, 1.0))
+        coluna.caption(f"meta {meta:.0f} g · faltam {max(meta - consumido, 0):.0f} g")
     col5.metric("🧂 Sódio", f"{df_dia['sodio'].sum() * 1000:.0f} mg")
+    # 2000 mg é o limite diário de sódio recomendado pela OMS
+    col5.caption("limite recomendado: 2000 mg")
 
     st.divider()
 
@@ -238,25 +274,74 @@ def mostrar_dia(df, meta_calorias):
         st.plotly_chart(fig_bar, width="stretch")
 
     st.divider()
-    st.subheader("🗑️ Gerenciar Registros do Dia")
+    st.subheader("✏️ Editar ou Apagar Registros do Dia")
 
-    col_select, col_botao = st.columns([3, 1])
-    with col_select:
-        id_para_deletar = st.selectbox(
-            "Selecione a refeição que deseja apagar:",
-            options=df_dia['id'].tolist(),
-            format_func=lambda x: f"ID {x} - {df_dia[df_dia['id'] == x]['nome_alimento'].values[0]} ({df_dia[df_dia['id'] == x]['porcao_g'].values[0]}g)"
-        )
-    with col_botao:
+    id_registro = st.selectbox(
+        "Selecione o registro:",
+        options=df_dia['id'].tolist(),
+        format_func=lambda x: f"ID {x} - {df_dia[df_dia['id'] == x]['nome_alimento'].values[0]} ({df_dia[df_dia['id'] == x]['porcao_g'].values[0]:.0f}g)"
+    )
+    registro = df_dia[df_dia['id'] == id_registro].iloc[0]
+    col_peso, col_refeicao, col_salvar, col_apagar = st.columns([2, 2, 1, 1])
+    # A key inclui o id para os campos trocarem de valor ao escolher outro registro
+    novo_peso = col_peso.number_input("Peso (g):", min_value=1.0, value=float(registro['porcao_g']),
+                                      step=10.0, key=f"editar_peso_{id_registro}")
+    nova_refeicao = col_refeicao.selectbox("Refeição:", REFEICOES, key=f"editar_refeicao_{id_registro}",
+                                           index=REFEICOES.index(registro['refeicao'])
+                                           if registro['refeicao'] in REFEICOES else 0)
+    with col_salvar:
         st.write("")
         st.write("")
-        if st.button("❌ Apagar Registro", width="stretch"):
-            db.deletar_consumo(id_para_deletar)
-            st.success("Apagado com sucesso!")
+        if st.button("💾 Salvar", width="stretch"):
+            db.atualizar_registro(id_registro, novo_peso, nova_refeicao)
+            st.rerun()
+    with col_apagar:
+        st.write("")
+        st.write("")
+        if st.button("❌ Apagar", width="stretch"):
+            db.deletar_consumo(id_registro)
             st.rerun()
 
 
-def mostrar_historico(df, meta_calorias):
+def mostrar_peso(perfil):
+    st.subheader("⚖️ Peso Corporal")
+    pesos = db.carregar_pesos()
+
+    peso_inicial = float(pesos['peso_kg'].iloc[-1]) if not pesos.empty else float(perfil['peso_kg'] if perfil else 70.0)
+    col_data, col_peso, col_botao = st.columns([2, 2, 1])
+    dia = col_data.date_input("Dia da pesagem:", datetime.now().date(), key="dia_pesagem")
+    peso = col_peso.number_input("Peso (kg):", min_value=30.0, max_value=300.0, value=peso_inicial,
+                                 step=0.1, key="peso_pesagem")
+    with col_botao:
+        st.write("")
+        st.write("")
+        if st.button("Registrar", width="stretch"):
+            db.registrar_peso(dia, peso)
+            st.rerun()
+    if perfil:
+        st.caption("A pesagem mais recente atualiza o seu perfil, e a meta calórica se ajusta sozinha.")
+
+    if pesos.empty:
+        st.info("Nenhuma pesagem registrada ainda.")
+        return
+
+    if len(pesos) >= 2:
+        variacao = pesos['peso_kg'].iloc[-1] - pesos['peso_kg'].iloc[0]
+        st.metric("Variação desde a primeira pesagem", f"{pesos['peso_kg'].iloc[-1]:.1f} kg",
+                  delta=f"{variacao:+.1f} kg", delta_color="off")
+        fig = px.line(pesos, x='data', y='peso_kg', markers=True, labels={'data': 'Dia', 'peso_kg': 'kg'})
+        st.plotly_chart(fig, width="stretch")
+
+    with st.expander("Apagar uma pesagem"):
+        id_peso = st.selectbox("Pesagem:", pesos['id'].tolist(), format_func=lambda x: (
+            f"{pesos.loc[pesos['id'] == x, 'data'].values[0]:%d/%m/%Y} - "
+            f"{pesos.loc[pesos['id'] == x, 'peso_kg'].values[0]:.1f} kg"))
+        if st.button("🗑️ Apagar pesagem"):
+            db.deletar_peso(id_peso)
+            st.rerun()
+
+
+def mostrar_historico(df, meta_calorias, perfil):
     dias = st.radio("Período:", [7, 30, 90], horizontal=True, format_func=lambda d: f"Últimos {d} dias")
 
     # Um valor por dia; dias sem registro entram com 0 para o gráfico não "pular" datas
@@ -268,31 +353,33 @@ def mostrar_historico(df, meta_calorias):
     registrados = por_dia[por_dia['calorias'] > 0]
     if registrados.empty:
         st.info(f"Nenhuma refeição registrada nos últimos {dias} dias.")
-        return
+    else:
+        # A média considera só os dias com registro, para dias esquecidos não puxarem para baixo
+        col1, col2, col3 = st.columns(3)
+        col1.metric("📊 Média diária", f"{registrados['calorias'].mean():.0f} kcal")
+        col2.metric("📝 Dias registrados", f"{len(registrados)} de {dias}")
+        col3.metric("🎯 Dias dentro da meta", f"{(registrados['calorias'] <= meta_calorias).sum()}")
 
-    # A média considera só os dias com registro, para dias esquecidos não puxarem para baixo
-    col1, col2, col3 = st.columns(3)
-    col1.metric("📊 Média diária", f"{registrados['calorias'].mean():.0f} kcal")
-    col2.metric("📝 Dias registrados", f"{len(registrados)} de {dias}")
-    col3.metric("🎯 Dias dentro da meta", f"{(registrados['calorias'] <= meta_calorias).sum()}")
+        st.subheader("Calorias por Dia")
+        df_grafico = por_dia.reset_index()
+        df_grafico['Situação'] = df_grafico['calorias'].map(
+            lambda c: 'Acima da meta' if c > meta_calorias else 'Dentro da meta')
+        fig = px.bar(df_grafico, x='Dia', y='calorias', color='Situação',
+                     color_discrete_map={'Dentro da meta': '#66B2FF', 'Acima da meta': '#FF9999'},
+                     labels={'calorias': 'kcal'})
+        fig.add_hline(y=meta_calorias, line_dash='dash', annotation_text=f"Meta: {meta_calorias} kcal")
+        st.plotly_chart(fig, width="stretch")
 
-    st.subheader("Calorias por Dia")
-    df_grafico = por_dia.reset_index()
-    df_grafico['Situação'] = df_grafico['calorias'].map(
-        lambda c: 'Acima da meta' if c > meta_calorias else 'Dentro da meta')
-    fig = px.bar(df_grafico, x='Dia', y='calorias', color='Situação',
-                 color_discrete_map={'Dentro da meta': '#66B2FF', 'Acima da meta': '#FF9999'},
-                 labels={'calorias': 'kcal'})
-    fig.add_hline(y=meta_calorias, line_dash='dash', annotation_text=f"Meta: {meta_calorias} kcal")
-    st.plotly_chart(fig, width="stretch")
+        st.subheader("Macronutrientes por Dia (g)")
+        df_macros = df_grafico.melt(id_vars='Dia', value_vars=['carboidratos', 'proteinas', 'gorduras'],
+                                    var_name='Nutriente', value_name='Gramas')
+        df_macros['Nutriente'] = df_macros['Nutriente'].str.capitalize()
+        fig_macros = px.bar(df_macros, x='Dia', y='Gramas', color='Nutriente',
+                            color_discrete_sequence=['#FF9999', '#66B2FF', '#99FF99'])
+        st.plotly_chart(fig_macros, width="stretch")
 
-    st.subheader("Macronutrientes por Dia (g)")
-    df_macros = df_grafico.melt(id_vars='Dia', value_vars=['carboidratos', 'proteinas', 'gorduras'],
-                                var_name='Nutriente', value_name='Gramas')
-    df_macros['Nutriente'] = df_macros['Nutriente'].str.capitalize()
-    fig_macros = px.bar(df_macros, x='Dia', y='Gramas', color='Nutriente',
-                        color_discrete_sequence=['#FF9999', '#66B2FF', '#99FF99'])
-    st.plotly_chart(fig_macros, width="stretch")
+    st.divider()
+    mostrar_peso(perfil)
 
 
 def mostrar_pratos():
@@ -399,11 +486,12 @@ with col_meta:
 
 st.divider()
 
+if df.empty:
+    st.info("👈 Use o menu lateral esquerdo para adicionar sua primeira refeição!")
+
 if secao == "🍲 Meus Pratos":
     mostrar_pratos()
-elif df.empty:
-    st.info("👈 Use o menu lateral esquerdo para adicionar sua primeira refeição!")
 elif secao == "📈 Histórico":
-    mostrar_historico(df, meta_calorias)
+    mostrar_historico(df, meta_calorias, perfil)
 else:
-    mostrar_dia(df, meta_calorias)
+    mostrar_dia(df, meta_calorias, perfil)

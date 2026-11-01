@@ -58,6 +58,21 @@ def criar_tabelas():
                 objetivo TEXT NOT NULL
             )
         ''')
+        conexao.execute('''
+            CREATE TABLE IF NOT EXISTS agua (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data_registro TEXT NOT NULL,
+                ml REAL NOT NULL
+            )
+        ''')
+        # UNIQUE em data: no máximo uma pesagem por dia (a nova substitui a antiga)
+        conexao.execute('''
+            CREATE TABLE IF NOT EXISTS peso_corporal (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data TEXT NOT NULL UNIQUE,
+                peso_kg REAL NOT NULL
+            )
+        ''')
         conexao.commit()
 
 
@@ -76,10 +91,25 @@ def salvar_consumo(refeicao, nome, peso, calorias, carb, prot, gord, sodio):
 def carregar_historico():
     with conectar() as conexao:
         df = pd.read_sql_query("SELECT * FROM historico_consumo", conexao)
-    if not df.empty:
-        df['data_registro'] = pd.to_datetime(df['data_registro'], format='mixed')
-        df['data_apenas'] = df['data_registro'].dt.date
+    # Mesmo vazio, o DataFrame sai com a coluna data_apenas, para os filtros funcionarem
+    df['data_registro'] = pd.to_datetime(df['data_registro'], format='mixed')
+    df['data_apenas'] = df['data_registro'].dt.date
     return df
+
+
+def atualizar_registro(id_registro, novo_peso, refeicao):
+    # Todos os nutrientes são proporcionais ao peso, então basta multiplicar pelo fator
+    with conectar() as conexao:
+        (peso_antigo,) = conexao.execute(
+            "SELECT porcao_g FROM historico_consumo WHERE id = ?", (id_registro,)).fetchone()
+        fator = novo_peso / peso_antigo
+        conexao.execute('''
+            UPDATE historico_consumo
+            SET porcao_g = ?, refeicao = ?, calorias = calorias * ?, carboidratos = carboidratos * ?,
+                proteinas = proteinas * ?, gorduras = gorduras * ?, sodio = sodio * ?
+            WHERE id = ?
+        ''', (novo_peso, refeicao, fator, fator, fator, fator, fator, id_registro))
+        conexao.commit()
 
 
 def deletar_consumo(id_registro):
@@ -125,3 +155,54 @@ def carregar_perfil():
         conexao.row_factory = sqlite3.Row
         linha = conexao.execute("SELECT * FROM perfil WHERE id = 1").fetchone()
     return dict(linha) if linha else None
+
+
+def registrar_agua(dia, ml):
+    # Usa o dia escolhido com a hora atual, para permitir lançar água em dias anteriores
+    data_registro = f"{dia:%Y-%m-%d} {datetime.now():%H:%M}"
+    with conectar() as conexao:
+        conexao.execute("INSERT INTO agua (data_registro, ml) VALUES (?, ?)", (data_registro, ml))
+        conexao.commit()
+
+
+def total_agua(dia):
+    with conectar() as conexao:
+        (total,) = conexao.execute(
+            "SELECT COALESCE(SUM(ml), 0) FROM agua WHERE data_registro LIKE ?", (f"{dia:%Y-%m-%d}%",)
+        ).fetchone()
+    return total
+
+
+def desfazer_agua(dia):
+    """Apaga o último copo registrado no dia."""
+    with conectar() as conexao:
+        conexao.execute(
+            "DELETE FROM agua WHERE id = "
+            "(SELECT id FROM agua WHERE data_registro LIKE ? ORDER BY id DESC LIMIT 1)",
+            (f"{dia:%Y-%m-%d}%",)
+        )
+        conexao.commit()
+
+
+def registrar_peso(dia, peso_kg):
+    data = f"{dia:%Y-%m-%d}"
+    with conectar() as conexao:
+        conexao.execute("INSERT OR REPLACE INTO peso_corporal (data, peso_kg) VALUES (?, ?)", (data, peso_kg))
+        # Se for a pesagem mais recente, atualiza o perfil para a meta se ajustar sozinha
+        (data_mais_recente,) = conexao.execute("SELECT MAX(data) FROM peso_corporal").fetchone()
+        if data_mais_recente == data:
+            conexao.execute("UPDATE perfil SET peso_kg = ? WHERE id = 1", (peso_kg,))
+        conexao.commit()
+
+
+def carregar_pesos():
+    with conectar() as conexao:
+        df = pd.read_sql_query("SELECT * FROM peso_corporal ORDER BY data", conexao)
+    df['data'] = pd.to_datetime(df['data']).dt.date
+    return df
+
+
+def deletar_peso(id_peso):
+    with conectar() as conexao:
+        conexao.execute("DELETE FROM peso_corporal WHERE id = ?", (id_peso,))
+        conexao.commit()

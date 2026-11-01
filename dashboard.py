@@ -1,17 +1,21 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
-import requests
 from datetime import datetime
 import plotly.express as px
 from PIL import Image
 from pyzbar.pyzbar import decode
 
+import api
+import db
+
 # --- 1. CONFIGURAÇÕES VISUAIS ---
 st.set_page_config(page_title="NutriData Pro", layout="wide", page_icon="🍏")
 st.title("🍏 NutriData - Dashboard Inteligente")
 
-# --- 2. BANCO DE DADOS PRÉ-SALVOS ---
+# --- 2. BANCO DE DADOS ---
+# Garante que as tabelas existem (essencial no primeiro acesso / no deploy)
+db.criar_tabelas()
+
 ALIMENTOS_SALVOS = {
     "Nutella": "3017620422003",
     "Coca-Cola Lata": "7894900011517",
@@ -19,51 +23,22 @@ ALIMENTOS_SALVOS = {
     "Digitar Novo Código...": "novo"
 }
 
-# --- 3. FUNÇÕES DO BACKEND (Todas as funções devem ficar aqui em cima!) ---
-def salvar_no_banco(refeicao, nome, peso, calorias, carb, prot, gord, sodio):
-    conexao = sqlite3.connect('nutridata.db')
-    cursor = conexao.cursor()
-    data_atual = datetime.now().strftime('%Y-%m-%d %H:%M')
-    cursor.execute('''
-        INSERT INTO historico_consumo 
-        (data_registro, refeicao, nome_alimento, porcao_g, calorias, carboidratos, proteinas, gorduras, sodio)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data_atual, refeicao, nome, peso, calorias, carb, prot, gord, sodio))
-    conexao.commit()
-    conexao.close()
-
+# --- 3. FUNÇÕES DO BACKEND (a lógica de API e banco fica em api.py e db.py) ---
 def registrar_alimento(codigo_barras, peso, refeicao):
-    url = f"https://world.openfoodfacts.org/api/v0/product/{codigo_barras}.json"
-    resposta = requests.get(url)
-    if resposta.status_code == 200 and resposta.json().get('status') == 1:
-        nutrientes = resposta.json()['product'].get('nutriments', {})
-        nome = resposta.json()['product'].get('product_name', 'Nome Desconhecido')
-        
-        calorias = (nutrientes.get('energy-kcal_100g', 0) / 100) * peso
-        carb = (nutrientes.get('carbohydrates_100g', 0) / 100) * peso
-        prot = (nutrientes.get('proteins_100g', 0) / 100) * peso
-        gord = (nutrientes.get('fat_100g', 0) / 100) * peso
-        sodio = (nutrientes.get('sodium_100g', 0) / 100) * peso
-        
-        salvar_no_banco(refeicao, nome, peso, calorias, carb, prot, gord, sodio)
-        return True, nome
-    return False, ""
+    """Busca o produto e salva no histórico. Retorna (sucesso, mensagem)."""
+    try:
+        produto = api.buscar_produto(codigo_barras)
+    except api.ErroAPI as erro:
+        return False, str(erro)
+    if produto is None:
+        return False, "Produto não achado na API."
 
-def carregar_dados():
-    conexao = sqlite3.connect('nutridata.db')
-    df = pd.read_sql_query("SELECT * FROM historico_consumo", conexao)
-    conexao.close()
-    if not df.empty:
-        df['data_registro'] = pd.to_datetime(df['data_registro'])
-        df['data_apenas'] = df['data_registro'].dt.date 
-    return df
-
-def deletar_do_banco(id_registro):
-    conexao = sqlite3.connect('nutridata.db')
-    cursor = conexao.cursor()
-    cursor.execute("DELETE FROM historico_consumo WHERE id = ?", (id_registro,))
-    conexao.commit()
-    conexao.close()
+    porcao = api.calcular_porcao(produto, peso)
+    db.salvar_consumo(
+        refeicao, produto['nome'], peso, porcao['calorias'], porcao['carboidratos'],
+        porcao['proteinas'], porcao['gorduras'], porcao['sodio']
+    )
+    return True, produto['nome']
 
 def ler_codigo_da_imagem(imagem_camera):
     img = Image.open(imagem_camera)
@@ -71,15 +46,6 @@ def ler_codigo_da_imagem(imagem_camera):
     if codigos:
         return codigos[0].data.decode('utf-8')
     return None
-
-def carregar_meus_alimentos():
-    conexao = sqlite3.connect('nutridata.db')
-    try:
-        df_meus = pd.read_sql_query("SELECT * FROM meus_alimentos", conexao)
-    except:
-        df_meus = pd.DataFrame() 
-    conexao.close()
-    return df_meus
 
 # --- 4. BARRA LATERAL (Interface de Entrada) ---
 with st.sidebar:
@@ -110,14 +76,14 @@ with st.sidebar:
                 if codigo_scaneado:
                     st.success(f"Código lido: {codigo_scaneado}")
                     if st.button("Buscar e Salvar", key="btn_scan", width="stretch"):
-                        sucesso, nome = registrar_alimento(codigo_scaneado, float(peso_input), refeicao_input)
+                        sucesso, mensagem = registrar_alimento(codigo_scaneado, float(peso_input), refeicao_input)
                         if sucesso: 
-                            st.success(f"✅ {nome} salvo!")
+                            st.success(f"✅ {mensagem} salvo!")
                             # Opcional: Desliga a câmera automaticamente após salvar
                             st.session_state.usar_camera = False
                             st.rerun()
                         else: 
-                            st.error("❌ Produto não achado na API.")
+                            st.error(f"❌ {mensagem}")
                 else:
                     st.warning("Nenhum código detectado. Tente aproximar ou melhorar o foco.")
         else:
@@ -127,12 +93,12 @@ with st.sidebar:
     with aba_api:
         codigo_input = st.text_input("Digite o Código de Barras:")
         if st.button("Buscar e Salvar", key="btn_api", width="stretch"):
-            sucesso, nome = registrar_alimento(codigo_input, float(peso_input), refeicao_input)
-            if sucesso: st.success(f"✅ {nome} salvo!")
-            else: st.error("❌ Produto não achado na API.")
+            sucesso, mensagem = registrar_alimento(codigo_input, float(peso_input), refeicao_input)
+            if sucesso: st.success(f"✅ {mensagem} salvo!")
+            else: st.error(f"❌ {mensagem}")
 
     with aba_meus:
-        df_meus = carregar_meus_alimentos()
+        df_meus = db.carregar_meus_alimentos()
         if df_meus.empty:
             st.info("Você ainda não tem pratos customizados salvos no banco.")
         else:
@@ -140,7 +106,7 @@ with st.sidebar:
             if st.button("Salvar Refeição Rápida", width="stretch"):
                 prato_dados = df_meus[df_meus['nome_alimento'] == prato_escolhido].iloc[0]
                 fator = float(peso_input) / prato_dados['porcao_g']
-                salvar_no_banco(
+                db.salvar_consumo(
                     refeicao_input, prato_escolhido, peso_input,
                     prato_dados['calorias'] * fator, prato_dados['carboidratos'] * fator,
                     prato_dados['proteinas'] * fator, prato_dados['gorduras'] * fator, 0
@@ -149,7 +115,7 @@ with st.sidebar:
                 st.rerun()
 
 # --- 5. O DASHBOARD VISUAL ---
-df = carregar_dados()
+df = db.carregar_historico()
 
 if df.empty:
     st.info("👈 Use o menu lateral esquerdo para adicionar sua primeira refeição!")
@@ -185,11 +151,12 @@ else:
         st.divider()
 
         st.subheader(f"📊 Resumo do Dia ({dia_selecionado.strftime('%d/%m')})")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("🔥 Calorias", f"{df_dia['calorias'].sum():.0f} kcal")
         col2.metric("🍞 Carboidratos", f"{df_dia['carboidratos'].sum():.0f} g")
         col3.metric("🍗 Proteínas", f"{df_dia['proteinas'].sum():.0f} g")
         col4.metric("🥑 Gorduras", f"{df_dia['gorduras'].sum():.0f} g")
+        col5.metric("🧂 Sódio", f"{df_dia['sodio'].sum() * 1000:.0f} mg")
         
         st.divider()
         
@@ -229,6 +196,6 @@ else:
                 st.write("") 
                 st.write("")
                 if st.button("❌ Apagar Registro", width="stretch"):
-                    deletar_do_banco(id_para_deletar)
+                    db.deletar_consumo(id_para_deletar)
                     st.success("Apagado com sucesso!")
                     st.rerun()

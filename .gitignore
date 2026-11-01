@@ -1,0 +1,4 @@
+# Banco local: cada ambiente cria o seu (db.criar_tabelas)
+nutridata.db
+__pycache__/
+.venv/

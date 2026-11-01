@@ -4,6 +4,7 @@ import streamlit as st
 import metas
 
 REFEICOES = ["Café da Manhã", "Almoço", "Lanche", "Jantar"]
+ICONES_REFEICOES = {"Café da Manhã": "☀️", "Almoço": "🍛", "Lanche": "🍎", "Jantar": "🌙"}
 CORES_MACROS = ['#FF9999', '#66B2FF', '#99FF99']
 
 

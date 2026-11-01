@@ -65,7 +65,8 @@ pagina = st.navigation([
 # --- 5. BARRA LATERAL (Interface de Entrada, igual em todas as páginas) ---
 with st.sidebar:
     st.header("🍽️ Adicionar Refeição")
-    refeicao_input = st.selectbox("Refeição:", REFEICOES)
+    # A key permite que o botão "Adicionar" de cada refeição na página Dia escolha a refeição aqui
+    refeicao_input = st.selectbox("Refeição:", REFEICOES, key="refeicao_sidebar")
     peso_input = st.number_input("Peso consumido (g):", min_value=1.0, value=100.0, step=10.0)
 
     aba_taco, aba_scan, aba_api, aba_meus = st.tabs(["🥦 Alimentos", "📷 Câmera", "🔍 Digitar", "⭐ Meus Pratos"])

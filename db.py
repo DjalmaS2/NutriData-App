@@ -85,6 +85,31 @@ def criar_tabelas():
                 ml REAL NOT NULL
             )
         ''')
+        # Somar ou não as calorias dos exercícios à meta do dia (0 = não, 1 = sim)
+        colunas_perfil = [c[1] for c in conexao.execute("PRAGMA table_info(perfil)")]
+        if 'somar_exercicio' not in colunas_perfil:
+            conexao.execute("ALTER TABLE perfil ADD COLUMN somar_exercicio INTEGER DEFAULT 0")
+        # Atividades com duração e calorias gastas (cardio, musculação...)
+        conexao.execute('''
+            CREATE TABLE IF NOT EXISTS atividades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data TEXT NOT NULL,
+                atividade TEXT NOT NULL,
+                minutos REAL NOT NULL,
+                kcal REAL NOT NULL
+            )
+        ''')
+        # Cada série de musculação: exercício, repetições e carga
+        conexao.execute('''
+            CREATE TABLE IF NOT EXISTS series (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data TEXT NOT NULL,
+                exercicio TEXT NOT NULL,
+                grupo TEXT NOT NULL,
+                repeticoes INTEGER NOT NULL,
+                carga_kg REAL NOT NULL
+            )
+        ''')
         # UNIQUE em data: no máximo uma pesagem por dia (a nova substitui a antiga)
         conexao.execute('''
             CREATE TABLE IF NOT EXISTS peso_corporal (
@@ -161,13 +186,13 @@ def deletar_prato(id_prato):
         conexao.commit()
 
 
-def salvar_perfil(sexo, idade, peso_kg, altura_cm, atividade, objetivo):
+def salvar_perfil(sexo, idade, peso_kg, altura_cm, atividade, objetivo, somar_exercicio=False):
     # INSERT OR REPLACE: cria o perfil na primeira vez e atualiza nas próximas
     with conectar() as conexao:
         conexao.execute('''
-            INSERT OR REPLACE INTO perfil (id, sexo, idade, peso_kg, altura_cm, atividade, objetivo)
-            VALUES (1, ?, ?, ?, ?, ?, ?)
-        ''', (sexo, idade, peso_kg, altura_cm, atividade, objetivo))
+            INSERT OR REPLACE INTO perfil (id, sexo, idade, peso_kg, altura_cm, atividade, objetivo, somar_exercicio)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+        ''', (sexo, idade, peso_kg, altura_cm, atividade, objetivo, int(somar_exercicio)))
         conexao.commit()
 
 
@@ -227,4 +252,55 @@ def carregar_pesos():
 def deletar_peso(id_peso):
     with conectar() as conexao:
         conexao.execute("DELETE FROM peso_corporal WHERE id = ?", (id_peso,))
+        conexao.commit()
+
+
+def registrar_atividade(dia, atividade, minutos, kcal):
+    with conectar() as conexao:
+        conexao.execute("INSERT INTO atividades (data, atividade, minutos, kcal) VALUES (?, ?, ?, ?)",
+                        (f"{dia:%Y-%m-%d}", atividade, minutos, kcal))
+        conexao.commit()
+
+
+def carregar_atividades():
+    with conectar() as conexao:
+        df = pd.read_sql_query("SELECT * FROM atividades ORDER BY data, id", conexao)
+    df['data'] = pd.to_datetime(df['data']).dt.date
+    return df
+
+
+def deletar_atividade(id_atividade):
+    with conectar() as conexao:
+        conexao.execute("DELETE FROM atividades WHERE id = ?", (id_atividade,))
+        conexao.commit()
+
+
+def kcal_exercicio(dia):
+    """Total de calorias gastas em atividades no dia."""
+    with conectar() as conexao:
+        (total,) = conexao.execute(
+            "SELECT COALESCE(SUM(kcal), 0) FROM atividades WHERE data = ?", (f"{dia:%Y-%m-%d}",)
+        ).fetchone()
+    return total
+
+
+def registrar_serie(dia, exercicio, grupo, repeticoes, carga_kg):
+    with conectar() as conexao:
+        conexao.execute(
+            "INSERT INTO series (data, exercicio, grupo, repeticoes, carga_kg) VALUES (?, ?, ?, ?, ?)",
+            (f"{dia:%Y-%m-%d}", exercicio, grupo, repeticoes, carga_kg)
+        )
+        conexao.commit()
+
+
+def carregar_series():
+    with conectar() as conexao:
+        df = pd.read_sql_query("SELECT * FROM series ORDER BY data, id", conexao)
+    df['data'] = pd.to_datetime(df['data']).dt.date
+    return df
+
+
+def deletar_serie(id_serie):
+    with conectar() as conexao:
+        conexao.execute("DELETE FROM series WHERE id = ?", (id_serie,))
         conexao.commit()

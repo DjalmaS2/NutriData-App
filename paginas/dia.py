@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import db
+import exercicios
 import metas
 from comum import CORES_MACROS, ICONES_REFEICOES, REFEICOES, campo_meta
 
@@ -34,23 +35,35 @@ def grafico_anel(consumido, meta):
     return fig
 
 
-def mostrar_saldo(df_dia, meta_calorias, perfil):
+def mostrar_saldo(df_dia, meta_calorias, perfil, gasto_exercicio):
     consumido = df_dia['calorias'].sum()
-    restante = meta_calorias - consumido
+    # O nível de atividade do perfil já conta os exercícios de costume, então somar
+    # os exercícios à meta é opcional (senão eles seriam contados duas vezes)
+    somar = bool(perfil and perfil.get('somar_exercicio'))
+    exercicio = gasto_exercicio if somar else 0
+    meta_total = meta_calorias + exercicio
+    restante = meta_total - consumido
 
     col_anel, col_resumo = st.columns([2, 3])
     with col_anel:
-        st.plotly_chart(grafico_anel(consumido, meta_calorias), width="stretch",
+        st.plotly_chart(grafico_anel(consumido, meta_total), width="stretch",
                         config={'displayModeBar': False})
     with col_resumo:
-        # A "conta" do dia: meta - consumido = restante
-        c1, c2, c3 = st.columns(3)
+        # A "conta" do dia: meta (+ exercício) - consumido = restante
+        if somar and gasto_exercicio > 0:
+            c1, c2, c3, c4 = st.columns(4)
+            c2.metric("🏃 Exercício", f"+{exercicio:.0f}")
+        else:
+            c1, c3, c4 = st.columns(3)
         c1.metric("🎯 Meta", f"{meta_calorias:.0f}")
-        c2.metric("🍽️ Consumido", f"{consumido:.0f}")
-        c3.metric("⏳ Restante" if restante >= 0 else "⚠️ Excedido", f"{abs(restante):.0f}")
+        c3.metric("🍽️ Consumido", f"{consumido:.0f}")
+        c4.metric("⏳ Restante" if restante >= 0 else "⚠️ Excedido", f"{abs(restante):.0f}")
+        if gasto_exercicio > 0 and not somar:
+            st.caption(f"🏃 Exercícios hoje: {gasto_exercicio:.0f} kcal (não somados à meta, porque o nível "
+                       "de atividade do perfil já conta com eles; dá para mudar no Perfil).")
 
         # As metas de macros acompanham a meta calórica (inclusive se ela for mudada à mão)
-        meta_macros = metas.calcular_macros(meta_calorias, perfil['peso_kg'] if perfil else None)
+        meta_macros = metas.calcular_macros(meta_total, perfil['peso_kg'] if perfil else None)
         for nome, chave in [("🍞 Carboidratos", 'carboidratos'), ("🍗 Proteínas", 'proteinas'),
                             ("🥑 Gorduras", 'gorduras')]:
             valor, meta = df_dia[chave].sum(), meta_macros[chave]
@@ -177,9 +190,22 @@ def mostrar_graficos(df_dia):
             st.plotly_chart(fig_bar, width="stretch")
 
 
+def mostrar_sequencia(df):
+    hoje = datetime.now().date()
+    dias = exercicios.sequencia_dias(set(df['data_apenas']), hoje)
+    if dias == 0:
+        st.caption("🔥 Registre uma refeição hoje para começar uma sequência de dias.")
+    elif hoje in set(df['data_apenas']):
+        st.markdown(f"🔥 **{dias} {'dia seguido' if dias == 1 else 'dias seguidos'}** registrando a alimentação!")
+    else:
+        st.markdown(f"🔥 **{dias} {'dia seguido' if dias == 1 else 'dias seguidos'}**. "
+                    "Registre algo hoje para não perder a sequência!")
+
+
 st.title("📅 Controle Diário")
 perfil = db.carregar_perfil()
 df = db.carregar_historico()
+mostrar_sequencia(df)
 
 col_calendario, col_meta = st.columns(2)
 with col_calendario:
@@ -190,7 +216,7 @@ with col_meta:
 df_dia = df[df['data_apenas'] == dia_selecionado]
 
 st.divider()
-mostrar_saldo(df_dia, meta_calorias, perfil)
+mostrar_saldo(df_dia, meta_calorias, perfil, db.kcal_exercicio(dia_selecionado))
 mostrar_agua(dia_selecionado, perfil)
 mostrar_micronutrientes(df_dia)
 st.divider()

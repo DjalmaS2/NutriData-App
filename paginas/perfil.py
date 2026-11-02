@@ -27,8 +27,14 @@ with col_form:
                                  index=opcoes_atividade.index(atual.get('atividade', opcoes_atividade[0])))
         objetivo = st.selectbox("Objetivo:", opcoes_objetivo,
                                 index=opcoes_objetivo.index(atual.get('objetivo', "Manter peso")))
+        somar_exercicio = st.checkbox(
+            "Somar as calorias dos exercícios à meta do dia",
+            value=bool(atual.get('somar_exercicio', 0)),
+            help="O nível de atividade acima já considera os exercícios de costume. Se marcar esta opção, "
+                 "escolha 'Sedentário', senão os exercícios serão contados duas vezes."
+        )
         if st.form_submit_button("Salvar Perfil", width="stretch"):
-            db.salvar_perfil(sexo, idade, peso, altura, atividade, objetivo)
+            db.salvar_perfil(sexo, idade, peso, altura, atividade, objetivo, somar_exercicio)
             st.rerun()
 
 with col_metas:

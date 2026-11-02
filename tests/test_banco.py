@@ -89,3 +89,10 @@ def test_banco_antigo_ganha_colunas_novas(banco_temporario):
     registro = db.carregar_historico().iloc[0]
     assert registro['nome_alimento'] == 'Nutella'   # dados antigos preservados
     assert registro['fibras'] == 0                    # coluna nova criada
+
+
+def test_meta_de_peso_e_opcional():
+    db.salvar_perfil('Feminino', 25, 60, 165, 'Leve (exercício 1-3x por semana)', 'Manter peso')
+    assert db.carregar_perfil()['peso_meta'] is None
+    db.salvar_perfil('Feminino', 25, 60, 165, 'Leve (exercício 1-3x por semana)', 'Perder peso', peso_meta=56)
+    assert db.carregar_perfil()['peso_meta'] == 56

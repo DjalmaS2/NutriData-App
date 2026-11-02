@@ -89,6 +89,9 @@ def criar_tabelas():
         colunas_perfil = [c[1] for c in conexao.execute("PRAGMA table_info(perfil)")]
         if 'somar_exercicio' not in colunas_perfil:
             conexao.execute("ALTER TABLE perfil ADD COLUMN somar_exercicio INTEGER DEFAULT 0")
+        # Meta de peso em kg (vazia = sem meta)
+        if 'peso_meta' not in colunas_perfil:
+            conexao.execute("ALTER TABLE perfil ADD COLUMN peso_meta REAL")
         # Atividades com duração e calorias gastas (cardio, musculação...)
         conexao.execute('''
             CREATE TABLE IF NOT EXISTS atividades (
@@ -186,13 +189,14 @@ def deletar_prato(id_prato):
         conexao.commit()
 
 
-def salvar_perfil(sexo, idade, peso_kg, altura_cm, atividade, objetivo, somar_exercicio=False):
+def salvar_perfil(sexo, idade, peso_kg, altura_cm, atividade, objetivo, somar_exercicio=False, peso_meta=None):
     # INSERT OR REPLACE: cria o perfil na primeira vez e atualiza nas próximas
     with conectar() as conexao:
         conexao.execute('''
-            INSERT OR REPLACE INTO perfil (id, sexo, idade, peso_kg, altura_cm, atividade, objetivo, somar_exercicio)
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?)
-        ''', (sexo, idade, peso_kg, altura_cm, atividade, objetivo, int(somar_exercicio)))
+            INSERT OR REPLACE INTO perfil
+            (id, sexo, idade, peso_kg, altura_cm, atividade, objetivo, somar_exercicio, peso_meta)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (sexo, idade, peso_kg, altura_cm, atividade, objetivo, int(somar_exercicio), peso_meta))
         conexao.commit()
 
 

@@ -16,7 +16,7 @@ PAGINAS = ['paginas/dia.py', 'paginas/historico.py', 'paginas/pratos.py',
 
 def preencher_dados_de_exemplo():
     hoje = date.today()
-    db.salvar_perfil('Masculino', 30, 80, 180, 'Moderado (exercício 3-5x por semana)', 'Perder peso')
+    db.salvar_perfil('Masculino', 30, 80, 180, 'Moderado (exercício 3-5x por semana)', 'Perder peso', peso_meta=75)
     db.salvar_consumo('Almoço', 'Arroz, tipo 1, cozido', 150, {'calorias': 192, 'carboidratos': 42})
     db.salvar_consumo('1', 'Registro antigo', 10, {'calorias': 54})  # refeição fora da lista
     db.salvar_prato('Marmita', 250, {'calorias': 383})

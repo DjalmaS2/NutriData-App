@@ -1,4 +1,6 @@
 # Cálculo da meta calórica diária a partir do perfil do usuário
+import pandas as pd
+
 
 # Multiplicador do gasto calórico conforme o nível de atividade física
 FATORES_ATIVIDADE = {
@@ -70,3 +72,49 @@ VALORES_DIARIOS = {
     'vitamina_c': {'nome': 'Vitamina C', 'icone': '🍊', 'valor': 100, 'unidade': 'mg'},
     'potassio': {'nome': 'Potássio', 'icone': '🍌', 'valor': 3500, 'unidade': 'mg'},
 }
+
+
+# --- Meta de peso ---
+# Aproximação usada em nutrição: perder ou ganhar 1 kg de peso corporal ~ 7700 kcal
+KCAL_POR_KG = 7700
+
+
+def semanas_pelo_plano(peso_atual, peso_meta, ajuste_kcal_dia):
+    """Semanas até a meta seguindo o déficit (ou superávit) diário do objetivo.
+
+    Retorna None quando o plano não leva à meta: objetivo "manter" (ajuste 0) ou
+    objetivo no sentido contrário (ex.: meta abaixo do peso atual, mas objetivo ganhar massa).
+    """
+    diferenca = peso_meta - peso_atual
+    if diferenca == 0:
+        return 0
+    if ajuste_kcal_dia == 0 or (diferenca > 0) != (ajuste_kcal_dia > 0):
+        return None
+    return abs(diferenca) * KCAL_POR_KG / abs(ajuste_kcal_dia) / 7
+
+
+def ritmo_real_kg_semana(pesos):
+    """Tendência das pesagens em kg por semana (reta que melhor passa pelos pontos).
+
+    pesos: DataFrame com colunas 'data' (date) e 'peso_kg'. Precisa de pelo menos
+    2 pesagens com 7 dias ou mais entre a primeira e a última; senão retorna None.
+    """
+    if len(pesos) < 2:
+        return None
+    dias = pd.Series([(d - pesos['data'].iloc[0]).days for d in pesos['data']], dtype=float)
+    if dias.iloc[-1] - dias.iloc[0] < 7:
+        return None
+    # Inclinação da reta de mínimos quadrados: kg por dia
+    inclinacao = ((dias - dias.mean()) * (pesos['peso_kg'] - pesos['peso_kg'].mean())).sum() \
+        / ((dias - dias.mean()) ** 2).sum()
+    return inclinacao * 7
+
+
+def semanas_pelo_ritmo(peso_atual, peso_meta, kg_por_semana):
+    """Semanas até a meta mantendo o ritmo atual; None se o ritmo não leva até lá."""
+    diferenca = peso_meta - peso_atual
+    if diferenca == 0:
+        return 0
+    if not kg_por_semana or (diferenca > 0) != (kg_por_semana > 0):
+        return None
+    return diferenca / kg_por_semana

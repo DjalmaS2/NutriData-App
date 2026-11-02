@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+import pandas as pd
 import pytest
 
 import exercicios
@@ -89,3 +90,35 @@ def dias_atras(*quantos):
 ])
 def test_sequencia_de_dias(dias, esperado):
     assert exercicios.sequencia_dias(dias, HOJE) == esperado
+
+
+# --- Meta de peso ---
+
+def test_semanas_pelo_plano():
+    # 5 kg x 7700 kcal / 500 kcal por dia = 77 dias = 11 semanas
+    assert metas.semanas_pelo_plano(80, 75, -500) == pytest.approx(11)
+
+
+@pytest.mark.parametrize('ajuste', [0, 300])
+def test_plano_que_nao_leva_a_meta(ajuste):
+    # Manter peso, ou ganhar massa quando a meta é emagrecer
+    assert metas.semanas_pelo_plano(80, 75, ajuste) is None
+
+
+def pesagens(*valores, intervalo=7):
+    datas = [date(2026, 10, 1) + timedelta(days=intervalo * i) for i in range(len(valores))]
+    return pd.DataFrame({'data': datas, 'peso_kg': valores})
+
+
+def test_ritmo_real_pelas_pesagens():
+    assert metas.ritmo_real_kg_semana(pesagens(82, 81.2, 80.4)) == pytest.approx(-0.8)
+
+
+def test_ritmo_real_precisa_de_uma_semana():
+    assert metas.ritmo_real_kg_semana(pesagens(82)) is None
+    assert metas.ritmo_real_kg_semana(pesagens(82, 81, intervalo=3)) is None
+
+
+def test_semanas_pelo_ritmo():
+    assert metas.semanas_pelo_ritmo(80.4, 75, -0.8) == pytest.approx(6.75)
+    assert metas.semanas_pelo_ritmo(80.4, 75, 0.3) is None   # engordando, meta é emagrecer

@@ -27,6 +27,10 @@ with col_form:
                                  index=opcoes_atividade.index(atual.get('atividade', opcoes_atividade[0])))
         objetivo = st.selectbox("Objetivo:", opcoes_objetivo,
                                 index=opcoes_objetivo.index(atual.get('objetivo', "Manter peso")))
+        # value=None deixa o campo vazio: a meta de peso é opcional
+        peso_meta = st.number_input("Meta de peso (kg, opcional):", min_value=30.0, max_value=300.0,
+                                    value=atual.get('peso_meta'), step=0.5, placeholder="ex: 75",
+                                    help="Com uma meta, o Histórico mostra quando você deve chegar lá.")
         somar_exercicio = st.checkbox(
             "Somar as calorias dos exercícios à meta do dia",
             value=bool(atual.get('somar_exercicio', 0)),
@@ -34,7 +38,7 @@ with col_form:
                  "escolha 'Sedentário', senão os exercícios serão contados duas vezes."
         )
         if st.form_submit_button("Salvar perfil", type="primary", width="stretch"):
-            db.salvar_perfil(sexo, idade, peso, altura, atividade, objetivo, somar_exercicio)
+            db.salvar_perfil(sexo, idade, peso, altura, atividade, objetivo, somar_exercicio, peso_meta)
             st.rerun()
 
 with col_metas:
@@ -49,7 +53,13 @@ with col_metas:
         c1.metric("🍞 Carboidratos", f"{macros['carboidratos']:.0f} g")
         c2.metric("🍗 Proteínas", f"{macros['proteinas']:.0f} g")
         c3.metric("🥑 Gorduras", f"{macros['gorduras']:.0f} g")
-        st.metric("💧 Água", f"{metas.meta_agua_ml(perfil['peso_kg']) / 1000:.1f} L")
+        c4, c5 = st.columns(2)
+        c4.metric("💧 Água", f"{metas.meta_agua_ml(perfil['peso_kg']) / 1000:.1f} L")
+        if perfil.get('peso_meta'):
+            falta = perfil['peso_meta'] - perfil['peso_kg']
+            c5.metric("⚖️ Meta de peso", f"{perfil['peso_meta']:g} kg",
+                      delta=f"faltam {abs(falta):.1f} kg" if abs(falta) >= 0.1 else "alcançada!",
+                      delta_color="off")
         with st.expander("Como as metas são calculadas"):
             st.markdown(
                 f"1. **Metabolismo basal** (fórmula de Mifflin-St Jeor): {calculo['tmb']:.0f} kcal, "

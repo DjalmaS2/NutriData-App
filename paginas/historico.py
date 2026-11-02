@@ -5,7 +5,7 @@ import plotly.express as px
 import streamlit as st
 
 import db
-from comum import CORES_MACROS, campo_meta
+from comum import COR_EXCEDIDO, COR_PRINCIPAL, CORES_MACROS, campo_meta
 
 
 def mostrar_calorias(df, meta_calorias):
@@ -28,27 +28,30 @@ def mostrar_calorias(df, meta_calorias):
     col2.metric("📝 Dias registrados", f"{len(registrados)} de {dias}")
     col3.metric("🎯 Dias dentro da meta", f"{(registrados['calorias'] <= meta_calorias).sum()}")
 
-    st.subheader("Calorias por Dia")
+    st.subheader("Calorias por dia")
     df_grafico = por_dia.reset_index()
     df_grafico['Situação'] = df_grafico['calorias'].map(
         lambda c: 'Acima da meta' if c > meta_calorias else 'Dentro da meta')
     fig = px.bar(df_grafico, x='Dia', y='calorias', color='Situação',
-                 color_discrete_map={'Dentro da meta': '#66B2FF', 'Acima da meta': '#FF9999'},
+                 color_discrete_map={'Dentro da meta': COR_PRINCIPAL, 'Acima da meta': COR_EXCEDIDO},
                  labels={'calorias': 'kcal'})
+    # Legenda em cima do gráfico, para não cortar os nomes nas telas menores
+    fig.update_layout(legend=dict(orientation='h', y=1.12, title_text=''))
     fig.add_hline(y=meta_calorias, line_dash='dash', annotation_text=f"Meta: {meta_calorias} kcal")
     st.plotly_chart(fig, width="stretch")
 
-    st.subheader("Macronutrientes por Dia (g)")
+    st.subheader("Macronutrientes por dia (g)")
     df_macros = df_grafico.melt(id_vars='Dia', value_vars=['carboidratos', 'proteinas', 'gorduras'],
                                 var_name='Nutriente', value_name='Gramas')
     df_macros['Nutriente'] = df_macros['Nutriente'].str.capitalize()
     fig_macros = px.bar(df_macros, x='Dia', y='Gramas', color='Nutriente',
                         color_discrete_sequence=CORES_MACROS)
+    fig_macros.update_layout(legend=dict(orientation='h', y=1.12, title_text=''))
     st.plotly_chart(fig_macros, width="stretch")
 
 
 def mostrar_peso(perfil):
-    st.subheader("⚖️ Peso Corporal")
+    st.subheader("Peso corporal")
     pesos = db.carregar_pesos()
 
     if not pesos.empty:
@@ -56,7 +59,8 @@ def mostrar_peso(perfil):
     else:
         peso_inicial = float(perfil['peso_kg']) if perfil else 70.0
     col_data, col_peso, col_botao = st.columns([2, 2, 1])
-    dia = col_data.date_input("Dia da pesagem:", datetime.now().date(), key="dia_pesagem")
+    dia = col_data.date_input("Dia da pesagem:", datetime.now().date(), key="dia_pesagem",
+                                format="DD/MM/YYYY")
     peso = col_peso.number_input("Peso (kg):", min_value=30.0, max_value=300.0, value=peso_inicial,
                                  step=0.1, key="peso_pesagem")
     with col_botao:
@@ -76,7 +80,8 @@ def mostrar_peso(perfil):
         variacao = pesos['peso_kg'].iloc[-1] - pesos['peso_kg'].iloc[0]
         st.metric("Variação desde a primeira pesagem", f"{pesos['peso_kg'].iloc[-1]:.1f} kg",
                   delta=f"{variacao:+.1f} kg", delta_color="off")
-        fig = px.line(pesos, x='data', y='peso_kg', markers=True, labels={'data': 'Dia', 'peso_kg': 'kg'})
+        fig = px.line(pesos, x='data', y='peso_kg', markers=True, labels={'data': 'Dia', 'peso_kg': 'kg'},
+                      color_discrete_sequence=[COR_PRINCIPAL])
         st.plotly_chart(fig, width="stretch")
 
     with st.expander("Apagar uma pesagem"):
@@ -88,7 +93,8 @@ def mostrar_peso(perfil):
             st.rerun()
 
 
-st.title("📈 Histórico")
+st.title("Histórico")
+st.caption("Como você tem se saído nas últimas semanas: calorias, macronutrientes e peso.")
 perfil = db.carregar_perfil()
 
 _, col_meta = st.columns(2)

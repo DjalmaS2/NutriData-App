@@ -7,7 +7,7 @@ import taco
 
 
 def montar_prato():
-    st.subheader("Montar um Prato")
+    st.subheader("Montar um prato")
     st.caption("Junte os ingredientes de uma receita e salve como prato. "
                "Depois é só registrar pela aba **⭐ Meus Pratos** na barra lateral.")
 
@@ -75,7 +75,7 @@ def montar_prato():
 
 
 def listar_pratos():
-    st.subheader("📋 Pratos Salvos")
+    st.subheader("Pratos salvos")
     df_meus = db.carregar_meus_alimentos()
     if df_meus.empty:
         st.info("Nenhum prato salvo ainda.")
@@ -91,7 +91,8 @@ def listar_pratos():
             st.rerun()
 
 
-st.title("🍲 Meus Pratos")
+st.title("Meus pratos")
+st.caption("Receitas que você come sempre, salvas uma vez e registradas com um clique.")
 montar_prato()
 st.divider()
 listar_pratos()

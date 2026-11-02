@@ -16,7 +16,7 @@ def planilha_excel():
     return arquivo.getvalue()
 
 
-st.title("💾 Backup dos Dados")
+st.title("Backup dos dados")
 st.info(
     "Os seus dados ficam num arquivo dentro do servidor do app. No Streamlit Cloud esse arquivo "
     "é apagado quando o servidor reinicia, então **baixe um backup de vez em quando** e "
@@ -35,12 +35,12 @@ for coluna, (nome, total) in zip(colunas, contagem.items()):
 hoje = datetime.now().strftime('%Y-%m-%d')
 st.divider()
 
-st.subheader("⬇️ Baixar")
+st.subheader("Baixar")
 col_backup, col_planilha = st.columns(2)
 with col_backup:
     st.markdown("**Backup completo**")
     st.caption("Um arquivo .db com tudo. É ele que você usa para restaurar depois.")
-    st.download_button("💾 Baixar backup", data=db.exportar_banco(), file_name=f"nutridata-backup-{hoje}.db",
+    st.download_button("💾 Baixar backup", type="primary", data=db.exportar_banco(), file_name=f"nutridata-backup-{hoje}.db",
                        mime="application/x-sqlite3", width="stretch")
 with col_planilha:
     st.markdown("**Planilha (Excel)**")
@@ -51,7 +51,7 @@ with col_planilha:
 
 st.divider()
 
-st.subheader("⬆️ Restaurar")
+st.subheader("Restaurar")
 st.caption("Envie um arquivo de backup (.db) baixado nesta página. "
            "**Os dados atuais serão substituídos pelos do backup.**")
 # Trocar a key limpa o campo de upload depois de uma restauração

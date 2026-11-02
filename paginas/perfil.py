@@ -3,7 +3,7 @@ import streamlit as st
 import db
 import metas
 
-st.title("👤 Meu Perfil")
+st.title("Meu perfil")
 st.caption("Com o perfil preenchido, o app calcula as suas metas de calorias, macronutrientes e água.")
 
 perfil = db.carregar_perfil()
@@ -33,12 +33,12 @@ with col_form:
             help="O nível de atividade acima já considera os exercícios de costume. Se marcar esta opção, "
                  "escolha 'Sedentário', senão os exercícios serão contados duas vezes."
         )
-        if st.form_submit_button("Salvar Perfil", width="stretch"):
+        if st.form_submit_button("Salvar perfil", type="primary", width="stretch"):
             db.salvar_perfil(sexo, idade, peso, altura, atividade, objetivo, somar_exercicio)
             st.rerun()
 
 with col_metas:
-    st.subheader("🎯 Suas Metas")
+    st.subheader("Suas metas")
     if perfil is None:
         st.info("Preencha e salve o perfil para ver as suas metas.")
     else:

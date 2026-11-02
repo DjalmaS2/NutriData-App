@@ -5,6 +5,7 @@ import streamlit as st
 
 import db
 import exercicios
+from comum import COR_PRINCIPAL
 
 PESO_PADRAO = 70.0
 
@@ -121,7 +122,8 @@ def mostrar_evolucao():
     c1.metric("🏆 Recorde", f"{por_dia['carga_maxima'].max():g} kg")
     c2.metric("📅 Treinos com este exercício", len(por_dia))
     fig = px.line(por_dia, x='data', y='carga_maxima', markers=True,
-                  labels={'data': 'Dia', 'carga_maxima': 'Maior carga (kg)'})
+                  labels={'data': 'Dia', 'carga_maxima': 'Maior carga (kg)'},
+                  color_discrete_sequence=[COR_PRINCIPAL])
     st.plotly_chart(fig, width="stretch")
 
     st.subheader("Séries por grupo muscular (últimos 7 dias)")
@@ -130,11 +132,13 @@ def mostrar_evolucao():
         st.caption("Nenhuma série nos últimos 7 dias.")
     else:
         contagem = semana.groupby('grupo').size().reset_index(name='Séries')
-        fig_grupos = px.bar(contagem, x='grupo', y='Séries', labels={'grupo': 'Grupo muscular'})
+        fig_grupos = px.bar(contagem, x='grupo', y='Séries', labels={'grupo': 'Grupo muscular'},
+                            color_discrete_sequence=[COR_PRINCIPAL])
         st.plotly_chart(fig_grupos, width="stretch")
 
 
-st.title("🏋️ Exercícios")
+st.title("Exercícios")
+st.caption("Séries de musculação, atividades e a sua evolução ao longo do tempo.")
 mostrar_aviso()
 perfil = db.carregar_perfil()
 
@@ -144,7 +148,7 @@ dias_treino = set(db.carregar_series()['data']) | set(db.carregar_atividades()['
 treinos_semana = sum(1 for d in dias_treino if hoje - timedelta(days=6) <= d <= hoje)
 
 col_data, col_semana = st.columns(2)
-dia = col_data.date_input("Dia do treino:", hoje)
+dia = col_data.date_input("Dia do treino:", hoje, format="DD/MM/YYYY")
 col_semana.metric("📆 Dias com treino nos últimos 7 dias", treinos_semana)
 
 secao = st.radio("Seção:", ["🏋️ Musculação", "🏃 Atividades", "📈 Evolução"], horizontal=True,

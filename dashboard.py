@@ -11,13 +11,15 @@ except (ImportError, OSError):
 import api
 import db
 import taco
-from comum import REFEICOES
+from comum import ICONES_REFEICOES, REFEICOES
 
 # Este arquivo roda em toda página: configura o app, monta a barra lateral
 # e no final abre a página escolhida (os arquivos ficam na pasta paginas/).
 
 # --- 1. CONFIGURAÇÕES VISUAIS ---
-st.set_page_config(page_title="NutriData Pro", layout="wide", page_icon="🍏")
+st.set_page_config(page_title="NutriData", layout="wide", page_icon="imagens/icone.svg")
+# Logo no topo da barra lateral (as cores e fontes do tema ficam em .streamlit/config.toml)
+st.logo("imagens/logo.svg", size="large", icon_image="imagens/icone.svg")
 
 # --- 2. BANCO DE DADOS ---
 # Garante que as tabelas existem (essencial no primeiro acesso / no deploy)
@@ -62,16 +64,18 @@ pagina = st.navigation([
 
 # --- 5. BARRA LATERAL (Interface de Entrada, igual em todas as páginas) ---
 with st.sidebar:
-    st.header("🍽️ Adicionar Refeição")
+    st.header("Registrar alimento")
+    st.caption("Escolha a refeição e o peso, depois busque o alimento numa das abas.")
     # A key permite que o botão "Adicionar" de cada refeição na página Dia escolha a refeição aqui
-    refeicao_input = st.selectbox("Refeição:", REFEICOES, key="refeicao_sidebar")
+    refeicao_input = st.selectbox("Refeição:", REFEICOES, key="refeicao_sidebar",
+                                  format_func=lambda r: f"{ICONES_REFEICOES[r]} {r}")
     peso_input = st.number_input("Peso consumido (g):", min_value=1.0, value=100.0, step=10.0)
 
     aba_taco, aba_scan, aba_api, aba_meus = st.tabs(["🥦 Alimentos", "📷 Câmera", "🔍 Digitar", "⭐ Meus Pratos"])
 
     with aba_taco:
         # Alimentos sem código de barras (arroz, feijão, frutas...) vêm da Tabela TACO
-        termo = st.text_input("Buscar alimento:", placeholder="ex: arroz cozido, feijão, banana")
+        termo = st.text_input("Buscar alimento (Tabela TACO):", placeholder="ex: arroz cozido, feijão, banana")
         if termo:
             resultados = taco.buscar(termo)
             if resultados.empty:
@@ -89,7 +93,7 @@ with st.sidebar:
                     f"C {porcao['carboidratos']:.1f} g · P {porcao['proteinas']:.1f} g · "
                     f"G {porcao['gorduras']:.1f} g"
                 )
-                if st.button("Salvar Alimento", key="btn_taco", width="stretch"):
+                if st.button("Salvar alimento", key="btn_taco", type="primary", width="stretch"):
                     salvar_produto(produto, float(peso_input), refeicao_input)
                     st.success(f"✅ {produto['nome']} salvo!")
 
@@ -101,7 +105,7 @@ with st.sidebar:
             st.session_state.usar_camera = False
 
         # 2. O Botão que liga e desliga
-        if st.button("📸 Ligar / Desligar Câmera", width="stretch"):
+        if st.button("📸 Ligar / desligar câmera", width="stretch"):
             # Inverte o estado (se tá ligado, desliga. Se tá desligado, liga)
             st.session_state.usar_camera = not st.session_state.usar_camera
             st.rerun()
@@ -115,7 +119,7 @@ with st.sidebar:
                 codigo_scaneado = ler_codigo_da_imagem(foto)
                 if codigo_scaneado:
                     st.success(f"Código lido: {codigo_scaneado}")
-                    if st.button("Buscar e Salvar", key="btn_scan", width="stretch"):
+                    if st.button("Buscar e salvar", key="btn_scan", type="primary", width="stretch"):
                         sucesso, mensagem = registrar_alimento(codigo_scaneado, float(peso_input), refeicao_input)
                         if sucesso:
                             st.success(f"✅ {mensagem} salvo!")
@@ -131,8 +135,8 @@ with st.sidebar:
             st.info("Câmera em modo de economia. Clique no botão acima para usar.")
 
     with aba_api:
-        codigo_input = st.text_input("Digite o Código de Barras:")
-        if st.button("Buscar e Salvar", key="btn_api", width="stretch"):
+        codigo_input = st.text_input("Código de barras:", placeholder="ex: 7891000100103")
+        if st.button("Buscar e salvar", key="btn_api", type="primary", width="stretch"):
             sucesso, mensagem = registrar_alimento(codigo_input, float(peso_input), refeicao_input)
             if sucesso: st.success(f"✅ {mensagem} salvo!")
             else: st.error(f"❌ {mensagem}")
@@ -149,7 +153,7 @@ with st.sidebar:
             )
             prato_dados = df_meus[df_meus['id'] == id_prato].iloc[0]
             st.caption(f"Prato inteiro: {prato_dados['porcao_g']:.0f} g · {prato_dados['calorias']:.0f} kcal")
-            if st.button("Salvar Refeição Rápida", width="stretch"):
+            if st.button("Salvar refeição rápida", type="primary", width="stretch"):
                 # Proporcional ao peso consumido em relação ao prato inteiro
                 fator = float(peso_input) / prato_dados['porcao_g']
                 db.salvar_consumo(refeicao_input, prato_dados['nome_alimento'], peso_input,

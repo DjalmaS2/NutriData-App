@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="48" viewBox="0 0 220 48">
+  <rect x="2" y="4" width="40" height="40" rx="12" fill="#2F9E6A"/>
+  <path d="M13 33c0-11 8-19 19-20-1 11-8 19-19 20z" fill="#FAF8F3"/>
+  <path d="M14 32l11-11" stroke="#2F9E6A" stroke-width="2" stroke-linecap="round"/>
+  <text x="52" y="33" font-family="Georgia, 'Times New Roman', serif" font-size="25" font-weight="700" fill="#2F9E6A">Nutri<tspan fill="#E9A23B">Data</tspan></text>
+</svg>

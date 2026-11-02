@@ -7,18 +7,15 @@ import streamlit as st
 import db
 import exercicios
 import metas
-from comum import CORES_MACROS, ICONES_REFEICOES, REFEICOES, campo_meta
-
-COR_CONSUMIDO = '#66B2FF'
-COR_RESTANTE = 'rgba(128, 128, 128, 0.25)'
-COR_EXCEDIDO = '#FF9999'
+from comum import (COR_EXCEDIDO, COR_PRINCIPAL, COR_RESTANTE, CORES_MACROS, ICONES_REFEICOES,
+                   REFEICOES, campo_meta)
 
 
 def grafico_anel(consumido, meta):
     """Anel com o consumido em cor e o que falta em cinza; o número restante fica no centro."""
     restante = meta - consumido
     if restante >= 0:
-        valores, cores = [consumido, restante], [COR_CONSUMIDO, COR_RESTANTE]
+        valores, cores = [consumido, restante], [COR_PRINCIPAL, COR_RESTANTE]
         texto, legenda = f"{restante:.0f}", "kcal restantes"
     else:
         valores, cores = [1], [COR_EXCEDIDO]
@@ -136,7 +133,7 @@ def editar_item(item):
 
 
 def mostrar_diario(df_dia):
-    st.subheader("📒 Diário")
+    st.subheader("Diário")
     # Registros com refeição fora da lista (dados antigos) aparecem em "Outros"
     outros = sorted(set(df_dia['refeicao']) - set(REFEICOES))
     for refeicao in REFEICOES + (["Outros"] if outros else []):
@@ -171,7 +168,7 @@ def mostrar_graficos(df_dia):
     with st.expander("📊 Gráficos do dia"):
         grafico1, grafico2 = st.columns(2)
         with grafico1:
-            st.markdown("**Proporção da Dieta**")
+            st.markdown("**Divisão dos macronutrientes**")
             df_macros = pd.DataFrame({
                 'Nutriente': ['Carboidratos', 'Proteínas', 'Gorduras'],
                 'Gramas': [df_dia['carboidratos'].sum(), df_dia['proteinas'].sum(), df_dia['gorduras'].sum()]
@@ -183,9 +180,9 @@ def mostrar_graficos(df_dia):
             else:
                 st.info("Não há dados de macronutrientes suficientes para este gráfico.")
         with grafico2:
-            st.markdown("**Calorias por Refeição**")
+            st.markdown("**Calorias por refeição**")
             df_agrupado = df_dia.groupby('refeicao')['calorias'].sum().reindex(REFEICOES).dropna()
-            fig_bar = go.Figure(go.Bar(x=df_agrupado.index, y=df_agrupado.values, marker_color=COR_CONSUMIDO))
+            fig_bar = go.Figure(go.Bar(x=df_agrupado.index, y=df_agrupado.values, marker_color=COR_PRINCIPAL))
             fig_bar.update_layout(yaxis_title='kcal')
             st.plotly_chart(fig_bar, width="stretch")
 
@@ -202,14 +199,14 @@ def mostrar_sequencia(df):
                     "Registre algo hoje para não perder a sequência!")
 
 
-st.title("📅 Controle Diário")
+st.title("Seu dia")
 perfil = db.carregar_perfil()
 df = db.carregar_historico()
 mostrar_sequencia(df)
 
 col_calendario, col_meta = st.columns(2)
 with col_calendario:
-    dia_selecionado = st.date_input("Filtrar por data:", datetime.now().date())
+    dia_selecionado = st.date_input("Dia:", datetime.now().date(), format="DD/MM/YYYY")
 with col_meta:
     meta_calorias = campo_meta(perfil)
 
@@ -221,7 +218,7 @@ mostrar_agua(dia_selecionado, perfil)
 mostrar_micronutrientes(df_dia)
 st.divider()
 if df.empty:
-    st.info("👈 Use o menu lateral esquerdo para adicionar sua primeira refeição!")
+    st.info("👈 Comece pela barra lateral: busque um alimento e salve a sua primeira refeição.")
 mostrar_diario(df_dia)
 if not df_dia.empty:
     mostrar_graficos(df_dia)

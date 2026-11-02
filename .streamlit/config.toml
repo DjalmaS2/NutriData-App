@@ -1,0 +1,41 @@
+# Identidade visual do NutriData
+# Verde-folha como cor principal, fundo creme no modo claro e verde-noite no escuro.
+# As cores dos gráficos ficam em comum.py (PALETA) e combinam com estas.
+
+[theme]
+primaryColor = "#2F9E6A"
+font = "DM Sans:https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap"
+headingFont = "Fraunces:https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+baseRadius = "0.75rem"
+buttonRadius = "full"
+showWidgetBorder = true
+greenColor = "#2F9E6A"
+redColor = "#E4572E"
+orangeColor = "#E9A23B"
+blueColor = "#3A8FB7"
+chartCategoricalColors = ["#2F9E6A", "#E9A23B", "#C8507A", "#3A8FB7", "#E4572E", "#8A6FBF", "#7F9A3A"]
+
+[theme.light]
+primaryColor = "#2F9E6A"
+backgroundColor = "#FAF8F3"
+secondaryBackgroundColor = "#F0ECE2"
+textColor = "#1F2A24"
+borderColor = "#E2DCCF"
+linkColor = "#23794F"
+
+[theme.light.sidebar]
+backgroundColor = "#F2EEE4"
+secondaryBackgroundColor = "#E8E3D7"
+
+[theme.dark]
+primaryColor = "#3DBB80"
+backgroundColor = "#111814"
+secondaryBackgroundColor = "#1B2520"
+textColor = "#E6ECE8"
+borderColor = "#2A3631"
+linkColor = "#5ED39C"
+
+[theme.dark.sidebar]
+backgroundColor = "#0C120F"
+secondaryBackgroundColor = "#18211D"

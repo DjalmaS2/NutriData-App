@@ -79,3 +79,41 @@ def test_sem_internet_vira_erro_amigavel(monkeypatch):
     monkeypatch.setattr(requests, 'get', sem_rede)
     with pytest.raises(api.ErroAPI):
         api.buscar_produto('7891000370643')
+
+
+# --- Busca com erros de digitação ---
+
+@pytest.mark.parametrize('digitado, esperado', [
+    ('feisao', 'feijão'),
+    ('feizao', 'feijão'),
+    ('arros cosido', 'arroz cozido'),
+    ('frango gralhado', 'frango grelhado'),
+])
+def test_corrige_erros_de_digitacao(digitado, esperado):
+    resultados, correcao = taco.buscar_aproximado(digitado)
+    assert correcao == esperado
+    assert not resultados.empty
+
+
+def test_feisao_encontra_feijao_carioca():
+    resultados, _ = taco.buscar_aproximado('feisao carioca')
+    assert 'Feijão, carioca, cozido' in resultados['nome'].tolist()
+
+
+@pytest.mark.parametrize('termo', ['feijao', 'fei', 'banana prat'])
+def test_busca_certa_nao_e_corrigida(termo):
+    resultados, correcao = taco.buscar_aproximado(termo)
+    assert correcao is None
+    assert not resultados.empty
+
+
+def test_texto_sem_sentido_nao_inventa_resultado():
+    resultados, correcao = taco.buscar_aproximado('xyzabc')
+    assert correcao is None
+    assert resultados.empty
+
+
+def test_nomes_que_comecam_com_a_palavra_vem_primeiro():
+    nomes = taco.buscar('feijao')['nome'].tolist()
+    assert nomes[0].startswith('Feijão')
+    assert all(n.startswith('Feijão') for n in nomes[:10])

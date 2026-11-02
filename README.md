@@ -15,13 +15,13 @@ macronutrientes, vitaminas e minerais, água, peso e exercícios, tudo com dados
 | 📅 **Dia** | Calorias restantes da meta, diário por refeição (café, almoço, lanche e jantar), metas de macros, água, fibras/vitaminas/minerais e sequência de dias registrando |
 | 📈 **Histórico** | Calorias por dia (7, 30 ou 90 dias) com a linha da meta, evolução do peso e previsão de quando você chega à meta de peso |
 | 🍲 **Meus Pratos** | Monte receitas com ingredientes da TACO e registre só a parte que comeu |
-| 🏋️ **Exercícios** | Musculação série por série (com último treino e recordes) e atividades com calorias gastas |
+| 🏋️ **Exercícios** | Registre a atividade e o tempo de treino; o app estima as calorias gastas (e você pode ajustar) |
 | ⏱️ **Jejum** | Cronômetro de jejum intermitente (12:12 a 20:4) com histórico e metas cumpridas |
 | 👤 **Perfil** | Calcula a meta calórica (fórmula de Mifflin-St Jeor), os macros e a água pelo seu perfil, e guarda a meta de peso |
 | 💾 **Backup** | Baixa e restaura todos os dados e exporta uma planilha Excel |
 
 Na barra lateral, em qualquer página, dá para registrar um alimento de três jeitos:
-**busca na Tabela TACO**, **código de barras pela câmera** ou **digitando o código** (Open Food Facts).
+**busca na Tabela TACO** (que entende erros de digitação, como "feisao" → feijão), **código de barras pela câmera** ou **digitando o código** (Open Food Facts).
 
 ## Como rodar
 
@@ -59,7 +59,7 @@ db.py               banco de dados SQLite: tabelas, leitura, gravação e backup
 api.py              busca de produtos por código de barras no Open Food Facts
 taco.py             busca de alimentos na Tabela TACO
 metas.py            cálculos de meta calórica, macros, água e valores diários
-exercicios.py       biblioteca de exercícios e cálculo de calorias gastas
+exercicios.py       atividades físicas, calorias gastas e sequência de dias
 jejum.py            protocolos e cálculos do jejum intermitente
 dados/taco.csv      Tabela TACO com os valores por 100 g
 tests/              testes automáticos (pytest)

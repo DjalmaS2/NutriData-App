@@ -24,7 +24,9 @@ def montar_prato():
                                  key="gramas_ingrediente")
 
     if termo:
-        resultados = taco.buscar(termo)
+        resultados, correcao = taco.buscar_aproximado(termo)
+        if correcao:
+            st.caption(f"Mostrando resultados para **{correcao}**")
         if resultados.empty:
             st.warning("Nenhum alimento encontrado. Tente outra palavra.")
         else:

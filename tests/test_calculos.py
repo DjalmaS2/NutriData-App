@@ -69,11 +69,6 @@ def test_calorias_da_corrida():
     assert exercicios.calcular_kcal('Corrida (10 km/h)', 30, 80) == pytest.approx(392)
 
 
-def test_todo_exercicio_da_biblioteca_tem_grupo():
-    todos = [e for lista in exercicios.BIBLIOTECA.values() for e in lista]
-    assert len(todos) == len(set(todos)), "exercício repetido em dois grupos"
-
-
 HOJE = date(2026, 11, 2)
 
 

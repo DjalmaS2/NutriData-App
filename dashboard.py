@@ -78,7 +78,9 @@ with st.sidebar:
         # Alimentos sem código de barras (arroz, feijão, frutas...) vêm da Tabela TACO
         termo = st.text_input("Buscar alimento (Tabela TACO):", placeholder="ex: arroz cozido, feijão, banana")
         if termo:
-            resultados = taco.buscar(termo)
+            resultados, correcao = taco.buscar_aproximado(termo)
+            if correcao:
+                st.caption(f"Mostrando resultados para **{correcao}**")
             if resultados.empty:
                 st.warning("Nenhum alimento encontrado. Tente outra palavra.")
             else:

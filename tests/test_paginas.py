@@ -23,7 +23,6 @@ def preencher_dados_de_exemplo():
     db.registrar_agua(hoje, 500)
     db.registrar_peso(hoje, 80)
     db.registrar_atividade(hoje, 'Corrida (10 km/h)', 30, 392)
-    db.registrar_serie(hoje, 'Supino reto', 'Peito', 10, 40)
     db.iniciar_jejum('16:8', 16, datetime.now() - timedelta(hours=20))
     db.encerrar_jejum(1, datetime.now() - timedelta(hours=3))
     db.iniciar_jejum('16:8', 16, datetime.now() - timedelta(hours=2))  # em andamento
@@ -51,3 +50,16 @@ def test_salvar_alimento_pela_barra_lateral_aparece_no_dia():
     app.sidebar.button(key='btn_taco').click().run()
     assert not app.exception
     assert db.carregar_historico()['nome_alimento'].tolist() == ['Banana, prata, crua']
+
+
+def test_registrar_treino_com_calorias_ajustadas():
+    app = abrir_app()
+    app.switch_page('paginas/exercicios.py').run()
+    app.selectbox[[s.label for s in app.selectbox].index('Atividade:')].set_value('Musculação (moderada)').run()
+    campo_kcal = [n for n in app.number_input if n.label == 'Calorias gastas (kcal):'][0]
+    assert campo_kcal.value == 245          # estimativa: MET 3,5 x 70 kg (sem perfil) x 1 h
+    campo_kcal.set_value(350).run()         # valor do relógio, por exemplo
+    app.button[[b.label for b in app.button].index('💾 Registrar')].click().run()
+    assert not app.exception
+    treino = db.carregar_atividades().iloc[0]
+    assert (treino['atividade'], treino['minutos'], treino['kcal']) == ('Musculação (moderada)', 60, 350)

@@ -102,17 +102,6 @@ def criar_tabelas():
                 kcal REAL NOT NULL
             )
         ''')
-        # Cada série de musculação: exercício, repetições e carga
-        conexao.execute('''
-            CREATE TABLE IF NOT EXISTS series (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL,
-                exercicio TEXT NOT NULL,
-                grupo TEXT NOT NULL,
-                repeticoes INTEGER NOT NULL,
-                carga_kg REAL NOT NULL
-            )
-        ''')
         # Jejuns: fim vazio = jejum em andamento
         conexao.execute('''
             CREATE TABLE IF NOT EXISTS jejuns (
@@ -298,27 +287,6 @@ def kcal_exercicio(dia):
     return total
 
 
-def registrar_serie(dia, exercicio, grupo, repeticoes, carga_kg):
-    with conectar() as conexao:
-        conexao.execute(
-            "INSERT INTO series (data, exercicio, grupo, repeticoes, carga_kg) VALUES (?, ?, ?, ?, ?)",
-            (f"{dia:%Y-%m-%d}", exercicio, grupo, repeticoes, carga_kg)
-        )
-        conexao.commit()
-
-
-def carregar_series():
-    with conectar() as conexao:
-        df = pd.read_sql_query("SELECT * FROM series ORDER BY data, id", conexao)
-    df['data'] = pd.to_datetime(df['data']).dt.date
-    return df
-
-
-def deletar_serie(id_serie):
-    with conectar() as conexao:
-        conexao.execute("DELETE FROM series WHERE id = ?", (id_serie,))
-        conexao.commit()
-
 
 # --- JEJUM ---
 FORMATO_DATA_HORA = '%Y-%m-%d %H:%M'
@@ -374,7 +342,6 @@ TABELAS_BACKUP = {
     'peso_corporal': 'Peso',
     'agua': 'Água',
     'atividades': 'Atividades',
-    'series': 'Séries',
     'jejuns': 'Jejuns',
 }
 

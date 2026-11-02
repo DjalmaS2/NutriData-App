@@ -1,4 +1,4 @@
-# Biblioteca de exercícios e cálculo de calorias gastas
+# Atividades físicas e cálculo de calorias gastas
 from datetime import timedelta
 
 # MET = quantas vezes a atividade gasta mais energia que o repouso.
@@ -20,19 +20,6 @@ ATIVIDADES_MET = {
     "Pular corda": 11.8,
     "Pilates": 3.0,
     "Yoga": 2.5,
-}
-
-# Exercícios de musculação por grupo muscular
-BIBLIOTECA = {
-    "Peito": ["Supino reto", "Supino inclinado", "Crucifixo", "Crossover", "Flexão de braço"],
-    "Costas": ["Puxada frontal", "Remada curvada", "Remada baixa", "Barra fixa", "Levantamento terra"],
-    "Ombros": ["Desenvolvimento", "Elevação lateral", "Elevação frontal", "Crucifixo inverso"],
-    "Bíceps": ["Rosca direta", "Rosca alternada", "Rosca martelo", "Rosca Scott"],
-    "Tríceps": ["Tríceps pulley", "Tríceps testa", "Tríceps francês", "Mergulho"],
-    "Pernas": ["Agachamento livre", "Leg press", "Cadeira extensora", "Mesa flexora",
-               "Stiff", "Afundo", "Panturrilha em pé"],
-    "Glúteos": ["Elevação pélvica", "Abdução de quadril", "Glúteo na polia"],
-    "Abdômen": ["Abdominal", "Elevação de pernas", "Abdominal na polia"],
 }
 
 

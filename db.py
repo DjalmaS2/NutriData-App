@@ -304,3 +304,68 @@ def deletar_serie(id_serie):
     with conectar() as conexao:
         conexao.execute("DELETE FROM series WHERE id = ?", (id_serie,))
         conexao.commit()
+
+
+# --- BACKUP ---
+# Tabelas com dados do usuário, na ordem em que aparecem na planilha exportada
+TABELAS_BACKUP = {
+    'historico_consumo': 'Refeições',
+    'meus_alimentos': 'Pratos',
+    'perfil': 'Perfil',
+    'peso_corporal': 'Peso',
+    'agua': 'Água',
+    'atividades': 'Atividades',
+    'series': 'Séries',
+}
+
+
+def exportar_banco():
+    """Retorna o banco inteiro como bytes (um arquivo .db pronto para baixar)."""
+    with conectar() as conexao:
+        return conexao.serialize()
+
+
+def contar_registros():
+    with conectar() as conexao:
+        return {nome: conexao.execute(f"SELECT COUNT(*) FROM {tabela}").fetchone()[0]
+                for tabela, nome in TABELAS_BACKUP.items()}
+
+
+def exportar_tabelas():
+    """Cada tabela como DataFrame, com o nome em português (para a planilha)."""
+    with conectar() as conexao:
+        return {nome: pd.read_sql_query(f"SELECT * FROM {tabela}", conexao)
+                for tabela, nome in TABELAS_BACKUP.items()}
+
+
+class BackupInvalido(Exception):
+    """O arquivo enviado não é um backup do NutriData."""
+
+
+def restaurar_banco(conteudo):
+    """Substitui o banco atual pelo backup (bytes de um arquivo .db).
+
+    Antes guarda uma cópia do banco atual em 'nutridata-antes-da-restauracao.db'.
+    """
+    # Todo arquivo SQLite começa com este texto; barra arquivos vazios ou de outro tipo
+    if not conteudo.startswith(b'SQLite format 3\x00'):
+        raise BackupInvalido("O arquivo não é um banco de dados válido.")
+    # Abre o backup só na memória, para conferir antes de mexer no banco de verdade
+    backup = sqlite3.connect(':memory:')
+    try:
+        backup.deserialize(conteudo)
+        tabelas = {linha[0] for linha in backup.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    except sqlite3.DatabaseError as erro:
+        backup.close()
+        raise BackupInvalido("O arquivo não é um banco de dados válido.") from erro
+    if 'historico_consumo' not in tabelas:
+        backup.close()
+        raise BackupInvalido("O arquivo não parece ser um backup do NutriData.")
+
+    CAMINHO_BANCO.with_name('nutridata-antes-da-restauracao.db').write_bytes(exportar_banco())
+    with conectar() as atual:
+        # backup() copia página por página, sem precisar apagar o arquivo aberto
+        backup.backup(atual)
+    backup.close()
+    # Backups de versões antigas do app ganham as tabelas e colunas novas
+    criar_tabelas()

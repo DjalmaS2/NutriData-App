@@ -59,3 +59,14 @@ def calcular_macros(meta_kcal, peso_kg=None):
 def meta_agua_ml(peso_kg=None):
     """Recomendação comum: 35 ml por kg de peso; sem perfil, 2 litros."""
     return 35 * peso_kg if peso_kg else 2000
+
+
+# Valores Diários de Referência para adultos da ANVISA (IN 75/2020, a mesma base dos rótulos).
+# Para fibras, cálcio, ferro e vitamina C é uma meta; para o potássio, uma referência de consumo.
+VALORES_DIARIOS = {
+    'fibras': {'nome': 'Fibras', 'icone': '🌾', 'valor': 25, 'unidade': 'g'},
+    'calcio': {'nome': 'Cálcio', 'icone': '🦴', 'valor': 1000, 'unidade': 'mg'},
+    'ferro': {'nome': 'Ferro', 'icone': '🩸', 'valor': 14, 'unidade': 'mg'},
+    'vitamina_c': {'nome': 'Vitamina C', 'icone': '🍊', 'valor': 100, 'unidade': 'mg'},
+    'potassio': {'nome': 'Potássio', 'icone': '🍌', 'valor': 3500, 'unidade': 'mg'},
+}

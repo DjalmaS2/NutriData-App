@@ -28,6 +28,5 @@ else:
         print(f"Sódio: {porcao['sodio'] * 1000:.0f}mg")
         print("-" * 30)
 
-        db.salvar_consumo(refeicao_input, produto['nome'], peso_input, porcao['calorias'],
-                          porcao['carboidratos'], porcao['proteinas'], porcao['gorduras'], porcao['sodio'])
+        db.salvar_consumo(refeicao_input, produto['nome'], peso_input, porcao)
         print("✅ Sucesso: Refeição salva no seu histórico do banco de dados!")

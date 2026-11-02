@@ -45,7 +45,8 @@ def montar_prato():
 
     tabela = ingredientes.assign(sodio=ingredientes['sodio'] * 1000).rename(columns={
         'calorias': 'kcal', 'carboidratos': 'Carb (g)', 'proteinas': 'Prot (g)',
-        'gorduras': 'Gord (g)', 'sodio': 'Sódio (mg)'})
+        'gorduras': 'Gord (g)', 'sodio': 'Sódio (mg)', 'fibras': 'Fibras (g)', 'calcio': 'Cálcio (mg)',
+        'ferro': 'Ferro (mg)', 'vitamina_c': 'Vit. C (mg)', 'potassio': 'Potássio (mg)'})
     st.dataframe(tabela.round(1), hide_index=True, width="stretch")
 
     soma_gramas = ingredientes['Gramas'].sum()
@@ -63,9 +64,8 @@ def montar_prato():
         if not nome_prato.strip():
             st.error("Dê um nome ao prato.")
         else:
-            db.salvar_prato(nome_prato.strip(), peso_final, ingredientes['calorias'].sum(),
-                            ingredientes['carboidratos'].sum(), ingredientes['proteinas'].sum(),
-                            ingredientes['gorduras'].sum(), ingredientes['sodio'].sum())
+            db.salvar_prato(nome_prato.strip(), peso_final,
+                            {n: ingredientes[n].sum() for n in db.NUTRIENTES})
             st.session_state.ingredientes = []
             st.rerun()
 

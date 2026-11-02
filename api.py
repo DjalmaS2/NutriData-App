@@ -38,24 +38,32 @@ def buscar_produto(codigo_barras):
 
     produto = dados['product']
     nutrientes = produto.get('nutriments', {})
+
+    def valor(campo, multiplicador=1):
+        # "or 0" cobre campos ausentes e campos que vêm como None
+        return float(nutrientes.get(campo) or 0) * multiplicador
+
+    # A API manda minerais e vitaminas em gramas; aqui viram mg (x 1000)
     return {
         'nome': produto.get('product_name') or 'Nome Desconhecido',
-        # "or 0" cobre campos ausentes e campos que vêm como None
-        'calorias_100g': nutrientes.get('energy-kcal_100g') or 0,
-        'carboidratos_100g': nutrientes.get('carbohydrates_100g') or 0,
-        'proteinas_100g': nutrientes.get('proteins_100g') or 0,
-        'gorduras_100g': nutrientes.get('fat_100g') or 0,
-        'sodio_100g': nutrientes.get('sodium_100g') or 0,  # em gramas
+        'calorias_100g': valor('energy-kcal_100g'),
+        'carboidratos_100g': valor('carbohydrates_100g'),
+        'proteinas_100g': valor('proteins_100g'),
+        'gorduras_100g': valor('fat_100g'),
+        'sodio_100g': valor('sodium_100g'),  # em gramas
+        'fibras_100g': valor('fiber_100g'),
+        'calcio_100g': valor('calcium_100g', 1000),
+        'ferro_100g': valor('iron_100g', 1000),
+        'vitamina_c_100g': valor('vitamin-c_100g', 1000),
+        'potassio_100g': valor('potassium_100g', 1000),
     }
 
 
 def calcular_porcao(produto, peso):
-    """Converte os valores por 100g para o peso realmente consumido."""
+    """Converte os valores por 100g para o peso realmente consumido.
+
+    Funciona para qualquer chave terminada em "_100g": 'calorias_100g' vira 'calorias'.
+    """
     fator = float(peso) / 100
-    return {
-        'calorias': produto['calorias_100g'] * fator,
-        'carboidratos': produto['carboidratos_100g'] * fator,
-        'proteinas': produto['proteinas_100g'] * fator,
-        'gorduras': produto['gorduras_100g'] * fator,
-        'sodio': produto['sodio_100g'] * fator,
-    }
+    return {chave.removesuffix('_100g'): valor * fator
+            for chave, valor in produto.items() if chave.endswith('_100g')}

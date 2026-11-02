@@ -8,6 +8,23 @@ import pandas as pd
 # O banco fica ao lado deste arquivo, não importa de qual pasta o app é iniciado
 CAMINHO_BANCO = Path(__file__).with_name('nutridata.db')
 
+# Colunas de nutrientes do histórico e dos pratos, com a unidade de cada uma.
+# O sódio fica em gramas (como vem da API); os minerais e a vitamina C, em mg.
+NUTRIENTES = {
+    'calorias': 'kcal',
+    'carboidratos': 'g',
+    'proteinas': 'g',
+    'gorduras': 'g',
+    'sodio': 'g',
+    'fibras': 'g',
+    'calcio': 'mg',
+    'ferro': 'mg',
+    'vitamina_c': 'mg',
+    'potassio': 'mg',
+}
+# Nutrientes que entraram depois; bancos antigos ganham essas colunas em criar_tabelas
+NUTRIENTES_NOVOS = ['fibras', 'calcio', 'ferro', 'vitamina_c', 'potassio']
+
 
 def conectar():
     return closing(sqlite3.connect(CAMINHO_BANCO))
@@ -42,10 +59,13 @@ def criar_tabelas():
                 sodio REAL DEFAULT 0
             )
         ''')
-        # Bancos criados antes da coluna sodio existir ganham a coluna aqui
-        colunas = [c[1] for c in conexao.execute("PRAGMA table_info(meus_alimentos)")]
-        if 'sodio' not in colunas:
-            conexao.execute("ALTER TABLE meus_alimentos ADD COLUMN sodio REAL DEFAULT 0")
+        # Bancos criados antes de cada coluna existir ganham a coluna aqui (com valor 0)
+        for tabela, novas in [('meus_alimentos', ['sodio'] + NUTRIENTES_NOVOS),
+                              ('historico_consumo', NUTRIENTES_NOVOS)]:
+            colunas = [c[1] for c in conexao.execute(f"PRAGMA table_info({tabela})")]
+            for coluna in novas:
+                if coluna not in colunas:
+                    conexao.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} REAL DEFAULT 0")
         # Só existe uma linha (id = 1): o perfil de quem usa o app
         conexao.execute('''
             CREATE TABLE IF NOT EXISTS perfil (
@@ -76,15 +96,21 @@ def criar_tabelas():
         conexao.commit()
 
 
-def salvar_consumo(refeicao, nome, peso, calorias, carb, prot, gord, sodio):
-    # O sódio é guardado em gramas, como vem da API
+def _inserir(conexao, tabela, campos, nutrientes):
+    """INSERT com os campos fixos + uma coluna por nutriente (os que faltarem entram como 0)."""
+    valores = {**campos, **{n: float(nutrientes.get(n, 0)) for n in NUTRIENTES}}
+    colunas = ', '.join(valores)
+    marcadores = ', '.join('?' * len(valores))
+    conexao.execute(f"INSERT INTO {tabela} ({colunas}) VALUES ({marcadores})", tuple(valores.values()))
+
+
+def salvar_consumo(refeicao, nome, peso, nutrientes):
+    """nutrientes: dict com as chaves de NUTRIENTES, já calculados para o peso consumido."""
     data_atual = datetime.now().strftime('%Y-%m-%d %H:%M')
     with conectar() as conexao:
-        conexao.execute('''
-            INSERT INTO historico_consumo
-            (data_registro, refeicao, nome_alimento, porcao_g, calorias, carboidratos, proteinas, gorduras, sodio)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (data_atual, refeicao, nome, peso, calorias, carb, prot, gord, sodio))
+        _inserir(conexao, 'historico_consumo',
+                 {'data_registro': data_atual, 'refeicao': refeicao, 'nome_alimento': nome, 'porcao_g': peso},
+                 nutrientes)
         conexao.commit()
 
 
@@ -103,12 +129,11 @@ def atualizar_registro(id_registro, novo_peso, refeicao):
         (peso_antigo,) = conexao.execute(
             "SELECT porcao_g FROM historico_consumo WHERE id = ?", (id_registro,)).fetchone()
         fator = novo_peso / peso_antigo
-        conexao.execute('''
-            UPDATE historico_consumo
-            SET porcao_g = ?, refeicao = ?, calorias = calorias * ?, carboidratos = carboidratos * ?,
-                proteinas = proteinas * ?, gorduras = gorduras * ?, sodio = sodio * ?
-            WHERE id = ?
-        ''', (novo_peso, refeicao, fator, fator, fator, fator, fator, id_registro))
+        multiplicar = ', '.join(f"{n} = {n} * ?" for n in NUTRIENTES)
+        conexao.execute(
+            f"UPDATE historico_consumo SET porcao_g = ?, refeicao = ?, {multiplicar} WHERE id = ?",
+            (novo_peso, refeicao, *[fator] * len(NUTRIENTES), id_registro)
+        )
         conexao.commit()
 
 
@@ -123,13 +148,10 @@ def carregar_meus_alimentos():
         return pd.read_sql_query("SELECT * FROM meus_alimentos ORDER BY nome_alimento", conexao)
 
 
-def salvar_prato(nome, porcao_g, calorias, carb, prot, gord, sodio):
+def salvar_prato(nome, porcao_g, nutrientes):
     # Os valores são do prato inteiro; porcao_g é o peso total dele
     with conectar() as conexao:
-        conexao.execute('''
-            INSERT INTO meus_alimentos (nome_alimento, porcao_g, calorias, carboidratos, proteinas, gorduras, sodio)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (nome, porcao_g, calorias, carb, prot, gord, sodio))
+        _inserir(conexao, 'meus_alimentos', {'nome_alimento': nome, 'porcao_g': porcao_g}, nutrientes)
         conexao.commit()
 
 

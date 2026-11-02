@@ -44,4 +44,9 @@ def como_produto(linha):
         'proteinas_100g': linha['proteinas_100g'],
         'gorduras_100g': linha['gorduras_100g'],
         'sodio_100g': linha['sodio_mg_100g'] / 1000,  # mg -> g, igual à API
+        'fibras_100g': linha['fibras_g_100g'],
+        'calcio_100g': linha['calcio_mg_100g'],
+        'ferro_100g': linha['ferro_mg_100g'],
+        'vitamina_c_100g': linha['vitamina_c_mg_100g'],
+        'potassio_100g': linha['potassio_mg_100g'],
     }

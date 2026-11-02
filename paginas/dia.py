@@ -81,6 +81,23 @@ def mostrar_agua(dia, perfil):
             st.rerun()
 
 
+def mostrar_micronutrientes(df_dia):
+    with st.expander("🥗 Fibras, vitaminas e minerais"):
+        st.caption("Porcentagem do Valor Diário de referência para adultos (ANVISA), "
+                   "a mesma base usada nos rótulos dos alimentos.")
+        colunas = st.columns(len(metas.VALORES_DIARIOS))
+        for coluna, (chave, vd) in zip(colunas, metas.VALORES_DIARIOS.items()):
+            consumido = df_dia[chave].sum()
+            percentual = consumido / vd['valor']
+            coluna.metric(f"{vd['icone']} {vd['nome']}", f"{percentual:.0%}")
+            coluna.progress(min(percentual, 1.0))
+            coluna.caption(f"{consumido:.1f} de {vd['valor']} {vd['unidade']}")
+        # Registros feitos antes desta versão não têm esses valores, e muitos produtos
+        # do Open Food Facts não informam vitaminas e minerais
+        st.caption("Alimentos da Tabela TACO trazem todos esses valores. Produtos por código de barras "
+                   "e registros antigos podem não ter, e entram como 0.")
+
+
 def escolher_refeicao(refeicao):
     # Roda antes da página recarregar, então a barra lateral já abre com a refeição escolhida
     st.session_state.refeicao_sidebar = refeicao
@@ -175,6 +192,7 @@ df_dia = df[df['data_apenas'] == dia_selecionado]
 st.divider()
 mostrar_saldo(df_dia, meta_calorias, perfil)
 mostrar_agua(dia_selecionado, perfil)
+mostrar_micronutrientes(df_dia)
 st.divider()
 if df.empty:
     st.info("👈 Use o menu lateral esquerdo para adicionar sua primeira refeição!")

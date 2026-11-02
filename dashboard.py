@@ -26,11 +26,7 @@ db.criar_tabelas()
 # --- 3. FUNÇÕES DO BACKEND (a lógica de API, banco e TACO fica em api.py, db.py e taco.py) ---
 def salvar_produto(produto, peso, refeicao):
     """Calcula a porção e salva no histórico. Serve para a API e para a TACO."""
-    porcao = api.calcular_porcao(produto, peso)
-    db.salvar_consumo(
-        refeicao, produto['nome'], peso, porcao['calorias'], porcao['carboidratos'],
-        porcao['proteinas'], porcao['gorduras'], porcao['sodio']
-    )
+    db.salvar_consumo(refeicao, produto['nome'], peso, api.calcular_porcao(produto, peso))
 
 def registrar_alimento(codigo_barras, peso, refeicao):
     """Busca o produto e salva no histórico. Retorna (sucesso, mensagem)."""
@@ -154,12 +150,8 @@ with st.sidebar:
             if st.button("Salvar Refeição Rápida", width="stretch"):
                 # Proporcional ao peso consumido em relação ao prato inteiro
                 fator = float(peso_input) / prato_dados['porcao_g']
-                db.salvar_consumo(
-                    refeicao_input, prato_dados['nome_alimento'], peso_input,
-                    prato_dados['calorias'] * fator, prato_dados['carboidratos'] * fator,
-                    prato_dados['proteinas'] * fator, prato_dados['gorduras'] * fator,
-                    prato_dados['sodio'] * fator
-                )
+                db.salvar_consumo(refeicao_input, prato_dados['nome_alimento'], peso_input,
+                                  {n: prato_dados[n] * fator for n in db.NUTRIENTES})
                 st.success(f"✅ {prato_dados['nome_alimento']} adicionado à dieta!")
 
 # --- 6. ABRE A PÁGINA ESCOLHIDA ---

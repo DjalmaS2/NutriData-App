@@ -2,7 +2,7 @@
 
 Roda duas vezes: com o banco vazio (primeiro acesso) e com dados de exemplo.
 """
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -11,7 +11,7 @@ from streamlit.testing.v1 import AppTest
 import db
 
 PAGINAS = ['paginas/dia.py', 'paginas/historico.py', 'paginas/pratos.py',
-           'paginas/exercicios.py', 'paginas/perfil.py', 'paginas/backup.py']
+           'paginas/exercicios.py', 'paginas/jejum.py', 'paginas/perfil.py', 'paginas/backup.py']
 
 
 def preencher_dados_de_exemplo():
@@ -24,6 +24,9 @@ def preencher_dados_de_exemplo():
     db.registrar_peso(hoje, 80)
     db.registrar_atividade(hoje, 'Corrida (10 km/h)', 30, 392)
     db.registrar_serie(hoje, 'Supino reto', 'Peito', 10, 40)
+    db.iniciar_jejum('16:8', 16, datetime.now() - timedelta(hours=20))
+    db.encerrar_jejum(1, datetime.now() - timedelta(hours=3))
+    db.iniciar_jejum('16:8', 16, datetime.now() - timedelta(hours=2))  # em andamento
 
 
 def abrir_app():

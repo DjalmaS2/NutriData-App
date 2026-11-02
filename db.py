@@ -113,6 +113,16 @@ def criar_tabelas():
                 carga_kg REAL NOT NULL
             )
         ''')
+        # Jejuns: fim vazio = jejum em andamento
+        conexao.execute('''
+            CREATE TABLE IF NOT EXISTS jejuns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                protocolo TEXT NOT NULL,
+                meta_horas REAL NOT NULL,
+                inicio TEXT NOT NULL,
+                fim TEXT
+            )
+        ''')
         # UNIQUE em data: no máximo uma pesagem por dia (a nova substitui a antiga)
         conexao.execute('''
             CREATE TABLE IF NOT EXISTS peso_corporal (
@@ -310,6 +320,51 @@ def deletar_serie(id_serie):
         conexao.commit()
 
 
+# --- JEJUM ---
+FORMATO_DATA_HORA = '%Y-%m-%d %H:%M'
+
+
+def iniciar_jejum(protocolo, meta_horas, inicio):
+    with conectar() as conexao:
+        conexao.execute("INSERT INTO jejuns (protocolo, meta_horas, inicio) VALUES (?, ?, ?)",
+                        (protocolo, meta_horas, inicio.strftime(FORMATO_DATA_HORA)))
+        conexao.commit()
+
+
+def jejum_ativo():
+    """O jejum em andamento (dict com inicio como datetime), ou None."""
+    with conectar() as conexao:
+        conexao.row_factory = sqlite3.Row
+        linha = conexao.execute("SELECT * FROM jejuns WHERE fim IS NULL ORDER BY id DESC LIMIT 1").fetchone()
+    if linha is None:
+        return None
+    jejum = dict(linha)
+    jejum['inicio'] = datetime.strptime(jejum['inicio'], FORMATO_DATA_HORA)
+    return jejum
+
+
+def encerrar_jejum(id_jejum, fim):
+    with conectar() as conexao:
+        conexao.execute("UPDATE jejuns SET fim = ? WHERE id = ?", (fim.strftime(FORMATO_DATA_HORA), id_jejum))
+        conexao.commit()
+
+
+def carregar_jejuns():
+    """Jejuns já encerrados, do mais recente para o mais antigo."""
+    with conectar() as conexao:
+        df = pd.read_sql_query("SELECT * FROM jejuns WHERE fim IS NOT NULL ORDER BY inicio DESC", conexao)
+    df['inicio'] = pd.to_datetime(df['inicio'], format=FORMATO_DATA_HORA)
+    df['fim'] = pd.to_datetime(df['fim'], format=FORMATO_DATA_HORA)
+    df['horas'] = (df['fim'] - df['inicio']).dt.total_seconds() / 3600
+    return df
+
+
+def deletar_jejum(id_jejum):
+    with conectar() as conexao:
+        conexao.execute("DELETE FROM jejuns WHERE id = ?", (id_jejum,))
+        conexao.commit()
+
+
 # --- BACKUP ---
 # Tabelas com dados do usuário, na ordem em que aparecem na planilha exportada
 TABELAS_BACKUP = {
@@ -320,6 +375,7 @@ TABELAS_BACKUP = {
     'agua': 'Água',
     'atividades': 'Atividades',
     'series': 'Séries',
+    'jejuns': 'Jejuns',
 }
 
 

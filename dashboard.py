@@ -58,6 +58,7 @@ pagina = st.navigation([
     st.Page("paginas/historico.py", title="Histórico", icon="📈"),
     st.Page("paginas/pratos.py", title="Meus Pratos", icon="🍲"),
     st.Page("paginas/exercicios.py", title="Exercícios", icon="🏋️"),
+    st.Page("paginas/jejum.py", title="Jejum", icon="⏱️"),
     st.Page("paginas/perfil.py", title="Perfil", icon="👤"),
     st.Page("paginas/backup.py", title="Backup", icon="💾"),
 ])

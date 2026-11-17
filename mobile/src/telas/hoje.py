@@ -7,6 +7,7 @@ import horario
 import metas
 import tema
 from formatos import REFEICOES, num
+from logica import ler_gramas
 
 DIAS_SEMANA = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto',
@@ -19,15 +20,6 @@ MACROS = [('Carboidratos', 'carboidratos', tema.CARBOIDRATOS),
 def data_por_extenso(dia):
     """date(2026, 11, 2) -> 'Segunda, 2 de novembro'"""
     return f'{DIAS_SEMANA[dia.weekday()]}, {dia.day} de {MESES[dia.month - 1]}'
-
-
-def ler_gramas(texto):
-    """'150' ou '150,5' -> número; None se não for um peso válido."""
-    try:
-        valor = float(texto.strip().replace(',', '.'))
-    except ValueError:
-        return None
-    return valor if valor > 0 else None
 
 
 class TelaHoje:

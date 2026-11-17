@@ -17,7 +17,10 @@ mobile/
   src/
     main.py              abre o app: banco, tema e barra de navegação
     tema.py              cores e fontes da identidade visual
+    logica.py            regras sem Flet (testadas em tests/test_mobile.py)
     telas/hoje.py        tela Hoje
+    telas/adicionar.py   Adicionar alimento (TACO, código de barras, Meus pratos) e Novo prato
+    telas/componentes.py peças repetidas: busca na TACO, porção com prévia, botões
     assets/fonts/        Fraunces e DM Sans (licença OFL, arquivos .txt ao lado)
 ```
 

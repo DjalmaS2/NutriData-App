@@ -56,6 +56,17 @@ def titulo(valor, tamanho=30, semi=False, color=TEXTO, **extras):
     return ft.Text(valor, size=tamanho, font_family=familia, color=color, **extras)
 
 
+def borda_campo(raio=16):
+    """Borda dos campos de texto: clara normalmente, verde ao digitar, vermelha com erro."""
+    def contorno(cor, largura):
+        return ft.OutlineInputBorder(side=ft.BorderSide(largura, cor), border_radius=raio)
+    return {
+        ft.ControlState.DEFAULT: contorno(BORDA, 1),
+        ft.ControlState.FOCUSED: contorno(VERDE, 2),
+        ft.ControlState.ERROR: contorno(EXCEDIDO, 1),
+    }
+
+
 def cartao(conteudo, raio=20, padding=16):
     """Caixa branca com borda clara e cantos arredondados."""
     return ft.Container(

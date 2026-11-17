@@ -17,6 +17,7 @@ import flet as ft  # noqa: E402
 
 import db  # noqa: E402
 import tema  # noqa: E402
+from telas.adicionar import PRATOS, TelaAdicionar, TelaNovoPrato  # noqa: E402
 from telas.hoje import TelaHoje  # noqa: E402
 
 
@@ -87,9 +88,22 @@ def main(page: ft.Page):
         elif indice == 4:
             area.content = em_breve('Perfil', 3)
 
-    def abrir_adicionar(refeicao=None):
-        # A tela Adicionar chega na etapa 2; por enquanto, só um aviso
-        page.show_dialog(ft.SnackBar(ft.Text('A tela Adicionar alimento chega na etapa 2.')))
+    def voltar_para_abas():
+        # Sai de Adicionar / Novo prato e volta para a aba que estava aberta (já atualizada)
+        barra.visible = True
+        mostrar(barra.data)
+
+    def abrir_adicionar(refeicao=None, modo=None):
+        # Telas "de passagem" escondem a barra de baixo, como no protótipo
+        barra.visible = False
+        area.content = adicionar.abrir(refeicao, modo)
+
+    def abrir_novo_prato():
+        area.content = novo_prato.abrir()
+
+    adicionar = TelaAdicionar(page, ao_voltar=voltar_para_abas, ao_novo_prato=abrir_novo_prato)
+    # Depois de salvar (ou voltar) do prato novo, reabre Adicionar já na aba Meus pratos
+    novo_prato = TelaNovoPrato(page, ao_voltar=lambda: abrir_adicionar(adicionar.refeicao, PRATOS))
 
     def trocar_aba(e):
         indice = int(e.control.selected_index)

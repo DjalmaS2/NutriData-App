@@ -4,7 +4,9 @@ import pandas as pd
 import pytest
 
 import exercicios
+import horario
 import metas
+from comum import num
 
 PERFIL_EXEMPLO = {
     'sexo': 'Masculino', 'idade': 30, 'peso_kg': 80, 'altura_cm': 180,
@@ -117,3 +119,27 @@ def test_ritmo_real_precisa_de_uma_semana():
 def test_semanas_pelo_ritmo():
     assert metas.semanas_pelo_ritmo(80.4, 75, -0.8) == pytest.approx(6.75)
     assert metas.semanas_pelo_ritmo(80.4, 75, 0.3) is None   # engordando, meta é emagrecer
+
+
+# --- Formato brasileiro e fuso horário ---
+
+@pytest.mark.parametrize('valor, opcoes, esperado', [
+    (5.4, {}, '5,4'),
+    (1234.5, {}, '1.234,5'),
+    (1.25, {'casas': 2}, '1,25'),
+    (-0.8, {'sinal': True}, '-0,8'),
+    (1.6, {'sinal': True}, '+1,6'),
+    (75.0, {'enxuto': True}, '75'),
+    (75.5, {'enxuto': True}, '75,5'),
+    (1000, {'casas': 0}, '1.000'),
+])
+def test_numero_no_formato_brasileiro(valor, opcoes, esperado):
+    assert num(valor, **opcoes) == esperado
+
+
+def test_horario_de_brasilia():
+    from datetime import datetime, timezone
+    diferenca = datetime.now(timezone.utc).replace(tzinfo=None) - horario.agora()
+    # Brasília fica 3 horas atrás do UTC (sem horário de verão desde 2019)
+    assert round(diferenca.total_seconds() / 3600) == 3
+    assert horario.hoje() == horario.agora().date()

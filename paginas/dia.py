@@ -1,14 +1,13 @@
-from datetime import datetime
-
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 import db
 import exercicios
+import horario
 import metas
-from comum import (COR_EXCEDIDO, COR_PRINCIPAL, COR_RESTANTE, CORES_MACROS, ICONES_REFEICOES,
-                   REFEICOES, campo_meta)
+from comum import (COR_EXCEDIDO, COR_PRINCIPAL, COR_RESTANTE, CORES_MACROS, ICONES_REFEICOES, REFEICOES,
+                   campo_meta, grafico_br, num)
 
 
 def grafico_anel(consumido, meta):
@@ -77,7 +76,7 @@ def mostrar_agua(dia, perfil):
 
     col_info, col_botoes = st.columns([2, 3])
     with col_info:
-        st.progress(min(total / meta_agua, 1.0), text=f"💧 Água: {total / 1000:.2f} de {meta_agua / 1000:.1f} L")
+        st.progress(min(total / meta_agua, 1.0), text=f"💧 Água: {num(total / 1000, 2)} de {num(meta_agua / 1000)} L")
     with col_botoes:
         b1, b2, b3 = st.columns(3)
         if b1.button("🥛 +250 ml", width="stretch"):
@@ -101,7 +100,7 @@ def mostrar_micronutrientes(df_dia):
             percentual = consumido / vd['valor']
             coluna.metric(f"{vd['icone']} {vd['nome']}", f"{percentual:.0%}")
             coluna.progress(min(percentual, 1.0))
-            coluna.caption(f"{consumido:.1f} de {vd['valor']} {vd['unidade']}")
+            coluna.caption(f"{num(consumido)} de {num(vd['valor'], 0)} {vd['unidade']}")
         # Registros feitos antes desta versão não têm esses valores, e muitos produtos
         # do Open Food Facts não informam vitaminas e minerais
         st.caption("Alimentos da Tabela TACO trazem todos esses valores. Produtos por código de barras "
@@ -176,7 +175,7 @@ def mostrar_graficos(df_dia):
             if df_macros['Gramas'].sum() > 0:
                 fig_pie = go.Figure(go.Pie(labels=df_macros['Nutriente'], values=df_macros['Gramas'],
                                            hole=0.5, marker_colors=CORES_MACROS))
-                st.plotly_chart(fig_pie, width="stretch")
+                st.plotly_chart(grafico_br(fig_pie), width="stretch")
             else:
                 st.info("Não há dados de macronutrientes suficientes para este gráfico.")
         with grafico2:
@@ -184,11 +183,11 @@ def mostrar_graficos(df_dia):
             df_agrupado = df_dia.groupby('refeicao')['calorias'].sum().reindex(REFEICOES).dropna()
             fig_bar = go.Figure(go.Bar(x=df_agrupado.index, y=df_agrupado.values, marker_color=COR_PRINCIPAL))
             fig_bar.update_layout(yaxis_title='kcal')
-            st.plotly_chart(fig_bar, width="stretch")
+            st.plotly_chart(grafico_br(fig_bar), width="stretch")
 
 
 def mostrar_sequencia(df):
-    hoje = datetime.now().date()
+    hoje = horario.hoje()
     dias = exercicios.sequencia_dias(set(df['data_apenas']), hoje)
     if dias == 0:
         st.caption("🔥 Registre uma refeição hoje para começar uma sequência de dias.")
@@ -206,7 +205,7 @@ mostrar_sequencia(df)
 
 col_calendario, col_meta = st.columns(2)
 with col_calendario:
-    dia_selecionado = st.date_input("Dia:", datetime.now().date(), format="DD/MM/YYYY")
+    dia_selecionado = st.date_input("Dia:", horario.hoje(), format="DD/MM/YYYY")
 with col_meta:
     meta_calorias = campo_meta(perfil)
 

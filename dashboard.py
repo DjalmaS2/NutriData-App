@@ -11,7 +11,7 @@ except (ImportError, OSError):
 import api
 import db
 import taco
-from comum import ICONES_REFEICOES, REFEICOES
+from comum import ICONES_REFEICOES, REFEICOES, num
 
 # Este arquivo roda em toda página: configura o app, monta a barra lateral
 # e no final abre a página escolhida (os arquivos ficam na pasta paginas/).
@@ -93,8 +93,8 @@ with st.sidebar:
                 porcao = api.calcular_porcao(produto, peso_input)
                 st.caption(
                     f"Em {peso_input:.0f} g: {porcao['calorias']:.0f} kcal · "
-                    f"C {porcao['carboidratos']:.1f} g · P {porcao['proteinas']:.1f} g · "
-                    f"G {porcao['gorduras']:.1f} g"
+                    f"C {num(porcao['carboidratos'])} g · P {num(porcao['proteinas'])} g · "
+                    f"G {num(porcao['gorduras'])} g"
                 )
                 if st.button("Salvar alimento", key="btn_taco", type="primary", width="stretch"):
                     salvar_produto(produto, float(peso_input), refeicao_input)

@@ -1,10 +1,10 @@
-from datetime import datetime
 from io import BytesIO
 
 import pandas as pd
 import streamlit as st
 
 import db
+import horario
 
 
 def planilha_excel():
@@ -32,7 +32,7 @@ colunas = st.columns(len(contagem))
 for coluna, (nome, total) in zip(colunas, contagem.items()):
     coluna.metric(nome, total)
 
-hoje = datetime.now().strftime('%Y-%m-%d')
+hoje = horario.agora().strftime('%Y-%m-%d')
 st.divider()
 
 st.subheader("Baixar")

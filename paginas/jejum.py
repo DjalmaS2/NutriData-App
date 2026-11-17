@@ -4,8 +4,9 @@ import plotly.express as px
 import streamlit as st
 
 import db
+import horario
 import jejum
-from comum import COR_PRINCIPAL, COR_RESTANTE
+from comum import COR_PRINCIPAL, COR_RESTANTE, grafico_br
 
 
 @st.fragment(run_every=60)
@@ -14,7 +15,7 @@ def mostrar_jejum_ativo():
     ativo = db.jejum_ativo()
     if ativo is None:
         st.rerun(scope="app")
-    agora = datetime.now()
+    agora = horario.agora()
     horas = jejum.horas_decorridas(ativo['inicio'], agora)
     fim_previsto = jejum.previsao_fim(ativo['inicio'], ativo['meta_horas'])
     percentual = horas / ativo['meta_horas']
@@ -38,7 +39,7 @@ def mostrar_inicio():
         st.markdown("**Começar um jejum**")
         protocolo = st.radio("Protocolo (horas de jejum : horas para comer):", list(jejum.PROTOCOLOS),
                              index=2, horizontal=True)
-        agora = datetime.now()
+        agora = horario.agora()
         # Dá para começar no passado, se você esqueceu de iniciar na hora da última refeição
         col_dia, col_hora = st.columns(2)
         dia = col_dia.date_input("Última refeição em:", agora.date(), format="DD/MM/YYYY",
@@ -65,7 +66,7 @@ def mostrar_historico_jejuns():
     c2.metric("Meta cumprida", f"{len(completos)} de {len(jejuns)}")
     c3.metric("Duração média", jejum.formatar_duracao(jejuns['horas'].mean()))
 
-    recentes = jejuns[jejuns['inicio'] >= datetime.now() - timedelta(days=14)].sort_values('inicio')
+    recentes = jejuns[jejuns['inicio'] >= horario.agora() - timedelta(days=14)].sort_values('inicio')
     if not recentes.empty:
         grafico = recentes.assign(
             Dia=recentes['inicio'].dt.date,
@@ -73,7 +74,7 @@ def mostrar_historico_jejuns():
                                     axis=1))
         fig = px.bar(grafico, x='Dia', y='horas', color='Situação', labels={'horas': 'Horas de jejum'},
                      color_discrete_map={'Meta cumprida': COR_PRINCIPAL, 'Abaixo da meta': '#B9B2A4'})
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(grafico_br(fig), width="stretch")
 
     for item in jejuns.head(10).itertuples():
         col_texto, col_apagar = st.columns([6, 1], vertical_alignment="center")

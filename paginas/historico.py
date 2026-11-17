@@ -1,17 +1,18 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 import db
+import horario
 import metas
-from comum import COR_EXCEDIDO, COR_PRINCIPAL, CORES_MACROS, campo_meta
+from comum import COR_EXCEDIDO, COR_PRINCIPAL, CORES_MACROS, campo_meta, grafico_br, num
 
 
 def texto_previsao(semanas):
     """'cerca de 12 semanas (por volta de 25/01/2027)'"""
-    data = datetime.now().date() + timedelta(weeks=semanas)
+    data = horario.hoje() + timedelta(weeks=semanas)
     quanto = "menos de 1 semana" if semanas < 1 else f"cerca de {semanas:.0f} semanas"
     return f"{quanto} (por volta de {data:%d/%m/%Y})"
 
@@ -22,7 +23,7 @@ def mostrar_meta_peso(perfil, pesos, peso_meta):
     falta = peso_meta - peso_atual
 
     with st.container(border=True):
-        st.markdown(f"**🎯 Meta: {peso_meta:g} kg**")
+        st.markdown(f"**🎯 Meta: {num(peso_meta, enxuto=True)} kg**")
         if abs(falta) < 0.1:
             st.success("Meta de peso alcançada! Que tal definir uma nova no Perfil?")
             return
@@ -30,7 +31,7 @@ def mostrar_meta_peso(perfil, pesos, peso_meta):
         caminho = peso_meta - peso_inicial
         progresso = (peso_atual - peso_inicial) / caminho if caminho else 0
         st.progress(min(max(progresso, 0.0), 1.0),
-                    text=f"Faltam {abs(falta):.1f} kg ({max(progresso, 0):.0%} do caminho desde {peso_inicial:g} kg)")
+                    text=f"Faltam {num(abs(falta))} kg ({max(progresso, 0):.0%} do caminho desde {num(peso_inicial, enxuto=True)} kg)")
 
         ajuste = metas.AJUSTE_OBJETIVO[perfil['objetivo']]
         semanas_plano = metas.semanas_pelo_plano(peso_atual, peso_meta, ajuste)
@@ -46,10 +47,10 @@ def mostrar_meta_peso(perfil, pesos, peso_meta):
         else:
             semanas_ritmo = metas.semanas_pelo_ritmo(peso_atual, peso_meta, ritmo)
             if semanas_ritmo is None:
-                st.markdown(f"📉 **No seu ritmo real** ({ritmo:+.1f} kg por semana) você está se afastando "
+                st.markdown(f"📉 **No seu ritmo real** ({num(ritmo, sinal=True)} kg por semana) você está se afastando "
                             "da meta.")
             else:
-                st.markdown(f"📉 **No seu ritmo real** ({ritmo:+.1f} kg por semana): {texto_previsao(semanas_ritmo)}")
+                st.markdown(f"📉 **No seu ritmo real** ({num(ritmo, sinal=True)} kg por semana): {texto_previsao(semanas_ritmo)}")
             # Mais de 1% do peso por semana é rápido demais para a maioria das pessoas
             if abs(ritmo) > peso_atual * 0.01:
                 st.warning("O seu peso está mudando mais de 1% por semana. Vale conversar com um "
@@ -63,7 +64,7 @@ def mostrar_calorias(df, meta_calorias):
 
     # Um valor por dia; dias sem registro entram com 0 para o gráfico não "pular" datas
     colunas = ['calorias', 'carboidratos', 'proteinas', 'gorduras']
-    periodo = pd.date_range(end=datetime.now().date(), periods=dias).date
+    periodo = pd.date_range(end=horario.hoje(), periods=dias).date
     por_dia = df.groupby('data_apenas')[colunas].sum().reindex(periodo, fill_value=0)
     por_dia.index.name = 'Dia'
 
@@ -88,7 +89,7 @@ def mostrar_calorias(df, meta_calorias):
     # Legenda em cima do gráfico, para não cortar os nomes nas telas menores
     fig.update_layout(legend=dict(orientation='h', y=1.12, title_text=''))
     fig.add_hline(y=meta_calorias, line_dash='dash', annotation_text=f"Meta: {meta_calorias} kcal")
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(grafico_br(fig), width="stretch")
 
     st.subheader("Macronutrientes por dia (g)")
     df_macros = df_grafico.melt(id_vars='Dia', value_vars=['carboidratos', 'proteinas', 'gorduras'],
@@ -97,7 +98,7 @@ def mostrar_calorias(df, meta_calorias):
     fig_macros = px.bar(df_macros, x='Dia', y='Gramas', color='Nutriente',
                         color_discrete_sequence=CORES_MACROS)
     fig_macros.update_layout(legend=dict(orientation='h', y=1.12, title_text=''))
-    st.plotly_chart(fig_macros, width="stretch")
+    st.plotly_chart(grafico_br(fig_macros), width="stretch")
 
 
 def mostrar_peso(perfil):
@@ -109,7 +110,7 @@ def mostrar_peso(perfil):
     else:
         peso_inicial = float(perfil['peso_kg']) if perfil else 70.0
     col_data, col_peso, col_botao = st.columns([2, 2, 1])
-    dia = col_data.date_input("Dia da pesagem:", datetime.now().date(), key="dia_pesagem",
+    dia = col_data.date_input("Dia da pesagem:", horario.hoje(), key="dia_pesagem",
                                 format="DD/MM/YYYY")
     peso = col_peso.number_input("Peso (kg):", min_value=30.0, max_value=300.0, value=peso_inicial,
                                  step=0.1, key="peso_pesagem")
@@ -132,18 +133,18 @@ def mostrar_peso(perfil):
 
     if len(pesos) >= 2:
         variacao = pesos['peso_kg'].iloc[-1] - pesos['peso_kg'].iloc[0]
-        st.metric("Variação desde a primeira pesagem", f"{pesos['peso_kg'].iloc[-1]:.1f} kg",
-                  delta=f"{variacao:+.1f} kg", delta_color="off")
+        st.metric("Variação desde a primeira pesagem", f"{num(pesos['peso_kg'].iloc[-1])} kg",
+                  delta=f"{num(variacao, sinal=True)} kg", delta_color="off")
         fig = px.line(pesos, x='data', y='peso_kg', markers=True, labels={'data': 'Dia', 'peso_kg': 'kg'},
                       color_discrete_sequence=[COR_PRINCIPAL])
         if peso_meta:
-            fig.add_hline(y=peso_meta, line_dash='dash', annotation_text=f"Meta: {peso_meta:g} kg")
-        st.plotly_chart(fig, width="stretch")
+            fig.add_hline(y=peso_meta, line_dash='dash', annotation_text=f"Meta: {num(peso_meta, enxuto=True)} kg")
+        st.plotly_chart(grafico_br(fig), width="stretch")
 
     with st.expander("Apagar uma pesagem"):
         id_peso = st.selectbox("Pesagem:", pesos['id'].tolist(), format_func=lambda x: (
             f"{pesos.loc[pesos['id'] == x, 'data'].values[0]:%d/%m/%Y} - "
-            f"{pesos.loc[pesos['id'] == x, 'peso_kg'].values[0]:.1f} kg"))
+            f"{num(pesos.loc[pesos['id'] == x, 'peso_kg'].values[0])} kg"))
         if st.button("🗑️ Apagar pesagem"):
             db.deletar_peso(id_peso)
             st.rerun()

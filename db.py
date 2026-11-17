@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
+import horario
+
 # O banco fica ao lado deste arquivo, não importa de qual pasta o app é iniciado
 CAMINHO_BANCO = Path(__file__).with_name('nutridata.db')
 
@@ -133,7 +135,7 @@ def _inserir(conexao, tabela, campos, nutrientes):
 
 def salvar_consumo(refeicao, nome, peso, nutrientes):
     """nutrientes: dict com as chaves de NUTRIENTES, já calculados para o peso consumido."""
-    data_atual = datetime.now().strftime('%Y-%m-%d %H:%M')
+    data_atual = horario.agora().strftime('%Y-%m-%d %H:%M')
     with conectar() as conexao:
         _inserir(conexao, 'historico_consumo',
                  {'data_registro': data_atual, 'refeicao': refeicao, 'nome_alimento': nome, 'porcao_g': peso},
@@ -209,7 +211,7 @@ def carregar_perfil():
 
 def registrar_agua(dia, ml):
     # Usa o dia escolhido com a hora atual, para permitir lançar água em dias anteriores
-    data_registro = f"{dia:%Y-%m-%d} {datetime.now():%H:%M}"
+    data_registro = f"{dia:%Y-%m-%d} {horario.agora():%H:%M}"
     with conectar() as conexao:
         conexao.execute("INSERT INTO agua (data_registro, ml) VALUES (?, ?)", (data_registro, ml))
         conexao.commit()

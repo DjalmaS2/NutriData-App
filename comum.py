@@ -17,6 +17,28 @@ COR_GORDURAS = '#3A8FB7'      # azul-petróleo
 CORES_MACROS = [COR_CARBOIDRATOS, COR_PROTEINAS, COR_GORDURAS]  # na ordem carboidratos, proteínas, gorduras
 
 
+def num(valor, casas=1, sinal=False, enxuto=False):
+    """Número no formato brasileiro: 1234.5 -> '1.234,5'.
+
+    sinal=True mostra + ou - (variações). enxuto=True tira o ',0' de números
+    inteiros (75.0 -> '75', 75.5 -> '75,5').
+    """
+    texto = f"{valor:{'+' if sinal else ''},.{casas}f}"
+    # Troca os separadores do padrão americano (1,234.5) pelos brasileiros (1.234,5)
+    texto = texto.replace(',', '_').replace('.', ',').replace('_', '.')
+    if enxuto and casas > 0:
+        texto = texto.rstrip('0').rstrip(',')
+    return texto
+
+
+def grafico_br(fig):
+    """Gráficos no padrão brasileiro: vírgula decimal, ponto de milhar e datas como 25/10."""
+    fig.update_layout(separators=',.')
+    # Só muda eixos de data; em eixos de texto (nomes das refeições) o formato é ignorado
+    fig.update_xaxes(tickformat='%d/%m')
+    return fig
+
+
 def campo_meta(perfil):
     """Mostra o campo da meta diária (calculada pelo perfil, mas editável) e retorna o valor."""
     calculo = metas.calcular_meta(perfil) if perfil else None

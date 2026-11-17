@@ -2,6 +2,7 @@ import streamlit as st
 
 import db
 import metas
+from comum import num
 
 st.title("Meu perfil")
 st.caption("Com o perfil preenchido, o app calcula as suas metas de calorias, macronutrientes e água.")
@@ -54,11 +55,11 @@ with col_metas:
         c2.metric("🍗 Proteínas", f"{macros['proteinas']:.0f} g")
         c3.metric("🥑 Gorduras", f"{macros['gorduras']:.0f} g")
         c4, c5 = st.columns(2)
-        c4.metric("💧 Água", f"{metas.meta_agua_ml(perfil['peso_kg']) / 1000:.1f} L")
+        c4.metric("💧 Água", f"{num(metas.meta_agua_ml(perfil['peso_kg']) / 1000)} L")
         if perfil.get('peso_meta'):
             falta = perfil['peso_meta'] - perfil['peso_kg']
-            c5.metric("⚖️ Meta de peso", f"{perfil['peso_meta']:g} kg",
-                      delta=f"faltam {abs(falta):.1f} kg" if abs(falta) >= 0.1 else "alcançada!",
+            c5.metric("⚖️ Meta de peso", f"{num(perfil['peso_meta'], enxuto=True)} kg",
+                      delta=f"faltam {num(abs(falta))} kg" if abs(falta) >= 0.1 else "alcançada!",
                       delta_color="off")
         with st.expander("Como as metas são calculadas"):
             st.markdown(

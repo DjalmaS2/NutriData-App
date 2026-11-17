@@ -4,6 +4,8 @@
 
 # NutriData
 
+[![Testes](https://github.com/DjalmaS2/NutriData-App/actions/workflows/testes.yml/badge.svg)](https://github.com/DjalmaS2/NutriData-App/actions/workflows/testes.yml)
+
 App de nutrição feito em **Python** e **Streamlit**: registre o que você come, acompanhe calorias,
 macronutrientes, vitaminas e minerais, água, peso e exercícios, tudo com dados brasileiros
 (Tabela TACO) e sem nenhum serviço pago.
@@ -45,6 +47,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
+Os testes também rodam sozinhos no GitHub a cada `git push` (aba **Actions** do repositório).
 Os testes conferem os cálculos (metas, macros, porções, calorias de exercício, sequência de dias),
 a busca na TACO, a API (com respostas simuladas, sem internet), o banco de dados, o backup e se cada
 página abre sem erro. Cada teste usa um banco temporário: o seu `nutridata.db` nunca é alterado.
@@ -61,6 +64,7 @@ taco.py             busca de alimentos na Tabela TACO
 metas.py            cálculos de meta calórica, macros, água e valores diários
 exercicios.py       atividades físicas, calorias gastas e sequência de dias
 jejum.py            protocolos e cálculos do jejum intermitente
+horario.py          data e hora no fuso de Brasília (o Streamlit Cloud roda em UTC)
 dados/taco.csv      Tabela TACO com os valores por 100 g
 tests/              testes automáticos (pytest)
 .streamlit/         tema visual do app

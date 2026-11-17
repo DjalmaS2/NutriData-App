@@ -1,12 +1,11 @@
-from datetime import datetime, timedelta
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 import db
 import exercicios
-from comum import COR_PRINCIPAL
+import horario
+from comum import COR_PRINCIPAL, grafico_br, num
 
 PESO_PADRAO = 70.0
 
@@ -40,7 +39,7 @@ def registrar(dia, perfil):
             db.registrar_atividade(dia, atividade, minutos, kcal)
             avisar(f"{atividade}: {kcal} kcal registradas", "🔥")
             st.rerun()
-        st.caption(f"Estimativa de {estimativa:.0f} kcal para {peso:g} kg"
+        st.caption(f"Estimativa de {estimativa:.0f} kcal para {num(peso, enxuto=True)} kg"
                    + ("" if perfil else " (peso padrão; preencha o Perfil para ficar mais preciso)")
                    + ". Se o seu relógio ou aparelho mostrou outro valor, é só trocar.")
 
@@ -61,21 +60,21 @@ def mostrar_dia(dia, atividades):
 
 
 def mostrar_semana(atividades):
-    hoje = datetime.now().date()
+    hoje = horario.hoje()
     periodo = pd.date_range(end=hoje, periods=7).date
     semana = atividades[atividades['data'].isin(periodo)]
 
     st.subheader("Últimos 7 dias")
     c1, c2, c3 = st.columns(3)
     c1.metric("📆 Dias com treino", semana['data'].nunique())
-    c2.metric("⏱️ Tempo total", f"{semana['minutos'].sum() / 60:.1f} h")
+    c2.metric("⏱️ Tempo total", f"{num(semana['minutos'].sum() / 60)} h")
     c3.metric("🔥 Calorias gastas", f"{semana['kcal'].sum():.0f} kcal")
     if semana.empty:
         return
     por_dia = semana.groupby('data')['kcal'].sum().reindex(periodo, fill_value=0).reset_index()
     por_dia.columns = ['Dia', 'kcal']
     fig = px.bar(por_dia, x='Dia', y='kcal', color_discrete_sequence=[COR_PRINCIPAL])
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(grafico_br(fig), width="stretch")
 
 
 st.title("Exercícios")
@@ -84,7 +83,7 @@ mostrar_aviso()
 perfil = db.carregar_perfil()
 atividades = db.carregar_atividades()
 
-dia = st.date_input("Dia do treino:", datetime.now().date(), format="DD/MM/YYYY")
+dia = st.date_input("Dia do treino:", horario.hoje(), format="DD/MM/YYYY")
 registrar(dia, perfil)
 mostrar_dia(dia, atividades)
 st.divider()

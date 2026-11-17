@@ -57,7 +57,8 @@ página abre sem erro. Cada teste usa um banco temporário: o seu `nutridata.db`
 ```
 dashboard.py        arquivo principal: configura o app, monta a barra lateral e abre a página
 paginas/            uma tela por arquivo (dia, historico, pratos, exercicios, jejum, perfil, backup)
-comum.py            partes usadas por várias páginas (refeições, cores, campo da meta)
+comum.py            partes usadas por várias páginas (cores, gráficos, campo da meta)
+formatos.py         refeições e números no padrão brasileiro (sem Streamlit; usado também no mobile)
 db.py               banco de dados SQLite: tabelas, leitura, gravação e backup
 api.py              busca de produtos por código de barras no Open Food Facts
 taco.py             busca de alimentos na Tabela TACO
@@ -68,6 +69,7 @@ horario.py          data e hora no fuso de Brasília (o Streamlit Cloud roda em 
 dados/taco.csv      Tabela TACO com os valores por 100 g
 tests/              testes automáticos (pytest)
 .streamlit/         tema visual do app
+mobile/             app Android em Flet, que usa a mesma lógica (veja mobile/README.md)
 ```
 
 ## Decisões do projeto

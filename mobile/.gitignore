@@ -1,0 +1,10 @@
+# Ambiente Python e arquivos gerados pelo Flet
+.venv/
+build/
+.flet/
+__pycache__/
+# Banco local do app quando roda no computador (dados_locais/) e bancos de teste
+dados_locais/
+dados_teste/
+# Cópia da lógica da raiz feita por preparar_build.py antes de gerar o APK
+src/nucleo/

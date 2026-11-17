@@ -2,9 +2,8 @@
 import streamlit as st
 
 import metas
-
-REFEICOES = ["Café da Manhã", "Almoço", "Lanche", "Jantar"]
-ICONES_REFEICOES = {"Café da Manhã": "☀️", "Almoço": "🍛", "Lanche": "🍎", "Jantar": "🌙"}
+# REFEICOES, ICONES_REFEICOES e num ficam em formatos.py (sem Streamlit), para o app Android usar também
+from formatos import ICONES_REFEICOES, REFEICOES, num  # noqa: F401
 
 # Paleta do app: as mesmas cores do tema em .streamlit/config.toml.
 # Tons médios, que ficam legíveis tanto no modo claro quanto no escuro.
@@ -15,20 +14,6 @@ COR_CARBOIDRATOS = '#E9A23B'  # trigo
 COR_PROTEINAS = '#C8507A'     # framboesa
 COR_GORDURAS = '#3A8FB7'      # azul-petróleo
 CORES_MACROS = [COR_CARBOIDRATOS, COR_PROTEINAS, COR_GORDURAS]  # na ordem carboidratos, proteínas, gorduras
-
-
-def num(valor, casas=1, sinal=False, enxuto=False):
-    """Número no formato brasileiro: 1234.5 -> '1.234,5'.
-
-    sinal=True mostra + ou - (variações). enxuto=True tira o ',0' de números
-    inteiros (75.0 -> '75', 75.5 -> '75,5').
-    """
-    texto = f"{valor:{'+' if sinal else ''},.{casas}f}"
-    # Troca os separadores do padrão americano (1,234.5) pelos brasileiros (1.234,5)
-    texto = texto.replace(',', '_').replace('.', ',').replace('_', '.')
-    if enxuto and casas > 0:
-        texto = texto.rstrip('0').rstrip(',')
-    return texto
 
 
 def grafico_br(fig):

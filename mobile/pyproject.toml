@@ -1,0 +1,28 @@
+[project]
+name = "nutridata"
+version = "0.1.0"
+description = "NutriData: diário de nutrição que funciona offline no celular"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flet==1.1.2",
+    "pandas",
+    "requests",
+    "tzdata",  # fusos horários (horário de Brasília) no Android
+]
+
+[tool.flet]
+# Nome que aparece embaixo do ícone no celular
+product = "NutriData"
+company = "NutriData"
+# org + name formam o identificador do app no Android: io.github.djalmas2.nutridata
+org = "io.github.djalmas2"
+copyright = "Copyright (C) 2026 NutriData"
+
+[tool.flet.app]
+# O código do app fica em src/ (main.py é o arquivo que abre o app)
+path = "src"
+module = "main"
+
+[dependency-groups]
+dev = ["flet[all]==1.1.2", "pytest"]

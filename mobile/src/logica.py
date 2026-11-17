@@ -1,5 +1,5 @@
 # Pequenas regras do app mobile que não dependem do Flet (por isso dá para testar no pytest)
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import metas
 from formatos import REFEICOES
@@ -109,3 +109,21 @@ def resumo_semana(atividades, hoje):
     semana = atividades[(atividades['data'] >= inicio) & (atividades['data'] <= hoje)]
     return {'dias': int(semana['data'].nunique()), 'minutos': float(semana['minutos'].sum()),
             'kcal': float(semana['kcal'].sum())}
+
+
+# --- Jejum ---
+def inicio_pela_hora(hora, agora):
+    """Início do jejum a partir só da hora (datetime.time) da última refeição.
+
+    Se a hora ainda não chegou hoje, a refeição foi ontem (ex.: às 8h, '21:00' é ontem às 21h).
+    """
+    inicio = datetime.combine(agora.date(), hora)
+    return inicio - timedelta(days=1) if inicio > agora else inicio
+
+
+def resumo_jejuns(jejuns):
+    """Total de jejuns concluídos, quantos cumpriram a meta e a duração média (horas)."""
+    if jejuns.empty:
+        return {'total': 0, 'cumpridos': 0, 'media_horas': 0}
+    return {'total': len(jejuns), 'cumpridos': int((jejuns['horas'] >= jejuns['meta_horas']).sum()),
+            'media_horas': float(jejuns['horas'].mean())}

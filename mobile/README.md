@@ -22,7 +22,9 @@ mobile/
     telas/adicionar.py   Adicionar alimento (TACO, código de barras, Meus pratos) e Novo prato
     telas/historico.py   Histórico: calorias por dia, peso e previsão da meta de peso
     telas/treino.py      Treino: atividade + tempo -> calorias (dá para trocar a estimativa)
-    telas/perfil.py      Perfil: dados da pessoa e metas calculadas
+    telas/perfil.py      Perfil: dados da pessoa, metas calculadas e atalhos para Jejum e Backup
+    telas/jejum.py       Jejum intermitente: começar, acompanhar até a meta e histórico
+    telas/backup.py      Backup: salvar e restaurar o banco (.db)
     telas/componentes.py peças repetidas: busca na TACO, porção com prévia, botões
     telas/graficos.py    gráficos de barras e de linha desenhados com o próprio Flet
     assets/fonts/        Fraunces e DM Sans (licença OFL, arquivos .txt ao lado)
@@ -53,7 +55,9 @@ Para voltar ao banco normal, feche o PowerShell (ou rode `Remove-Item Env:NUTRID
 ## Onde fica o banco no celular
 
 O Flet cria uma pasta privada para o app (`FLET_APP_STORAGE_DATA`). O banco fica lá e
-não some ao atualizar o APK. O backup (exportar/importar o `.db`) chega na etapa 4.
+não some ao atualizar o APK, mas some se o app for desinstalado. Por isso existe a tela
+Perfil > Backup: ela salva um `.db` onde você escolher (Downloads, Google Drive...) e restaura
+a partir dele. O mesmo arquivo funciona no app web (página Backup).
 
 ## Gerar o APK (etapa 5)
 

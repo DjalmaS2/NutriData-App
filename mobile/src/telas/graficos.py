@@ -16,7 +16,7 @@ def estatistica(rotulo, valor, detalhe=None):
                         bgcolor=tema.CARTAO, border=ft.Border.all(1, tema.BORDA))
 
 
-def barras(itens, meta=None, altura=150, rotulo_meta='Meta', datas=None):
+def barras(itens, meta=None, altura=150, rotulo_meta='Meta', datas=None, unidade='kcal'):
     """Gráfico de barras: itens = [(rótulo embaixo de cada barra, valor, cor)].
 
     meta desenha uma linha horizontal na altura do valor. Com muitas barras (finas demais
@@ -28,7 +28,7 @@ def barras(itens, meta=None, altura=150, rotulo_meta='Meta', datas=None):
     for rotulo, valor, cor in itens:
         barra = ft.Container(height=max(altura * valor / topo, 2 if valor else 0), bgcolor=cor,
                              border_radius=ft.BorderRadius.only(top_left=4, top_right=4),
-                             tooltip=f'{num(valor, 0)} kcal' if valor else None)
+                             tooltip=f'{num(valor, 0)} {unidade}' if valor else None)
         colunas.append(ft.Column(
             [ft.Container(barra, height=altura, alignment=ft.Alignment.BOTTOM_CENTER),
              tema.texto(rotulo, 10, cor=tema.TEXTO_SUAVE, text_align=ft.TextAlign.CENTER, no_wrap=True)],

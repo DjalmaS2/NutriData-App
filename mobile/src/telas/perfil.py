@@ -20,8 +20,10 @@ def texto_numero(valor):
 
 
 class TelaPerfil:
-    def __init__(self, page: ft.Page):
+    def __init__(self, page: ft.Page, ao_jejum, ao_backup):
         self.page = page
+        self.ao_jejum = ao_jejum    # abre a tela de Jejum
+        self.ao_backup = ao_backup  # abre a tela de Backup
         self.raiz = ft.Container(expand=True)
 
     def construir(self):
@@ -61,7 +63,7 @@ class TelaPerfil:
                               bgcolor=tema.VERDE_ESCURO, color=ft.Colors.WHITE)]),
         ], spacing=14, horizontal_alignment=ft.CrossAxisAlignment.STRETCH))
 
-        controles = [self._metas(perfil), secao('Seus dados'), formulario]
+        controles = [self._metas(perfil), secao('Mais'), self._mais(), secao('Seus dados'), formulario]
         self.raiz.content = pagina('Perfil', 'Com o perfil preenchido, o app calcula as suas metas.', controles)
         return self.raiz
 
@@ -103,6 +105,21 @@ class TelaPerfil:
                    spacing=8),
             explicacao,
         ], spacing=10), raio=24, padding=20)
+
+    def _mais(self):
+        def item(icone, titulo, detalhe, ao_tocar):
+            return ft.ListTile(
+                leading=ft.Container(ft.Icon(icone, color=tema.VERDE_ESCURO, size=22), width=40, height=40,
+                                     border_radius=12, bgcolor=tema.VERDE_CLARO, alignment=ft.Alignment.CENTER),
+                title=tema.texto(titulo, 15, 'negrito'), subtitle=tema.texto(detalhe, 12, cor=tema.TEXTO_SUAVE),
+                trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT, color=tema.TEXTO_SUAVE),
+                on_click=lambda e: ao_tocar(), content_padding=ft.Padding.symmetric(horizontal=4),
+            )
+        return tema.cartao(ft.Column([
+            item(ft.Icons.TIMER_OUTLINED, 'Jejum intermitente', 'Começar e acompanhar o tempo de jejum', self.ao_jejum),
+            ft.Divider(height=1, color=tema.BORDA),
+            item(ft.Icons.BACKUP_OUTLINED, 'Backup', 'Salvar e restaurar os seus dados', self.ao_backup),
+        ], spacing=0), padding=ft.Padding.symmetric(vertical=6, horizontal=12))
 
     def _trocar_sexo(self, sexo):
         self.sexo = sexo

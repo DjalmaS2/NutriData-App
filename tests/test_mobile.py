@@ -91,3 +91,21 @@ def test_resumo_semana_ignora_treinos_antigos():
     db.registrar_atividade(date(2026, 11, 12), 'Pilates', 40, 120)
     db.registrar_atividade(date(2026, 11, 1), 'Dança', 60, 300)  # fora dos 7 dias
     assert logica.resumo_semana(db.carregar_atividades(), hoje) == {'dias': 2, 'minutos': 70, 'kcal': 220}
+
+
+def test_inicio_pela_hora_usa_ontem_quando_a_hora_ainda_nao_chegou():
+    from datetime import datetime, time
+    agora = datetime(2026, 11, 17, 8, 30)
+    assert logica.inicio_pela_hora(time(21, 0), agora) == datetime(2026, 11, 16, 21, 0)
+    assert logica.inicio_pela_hora(time(7, 15), agora) == datetime(2026, 11, 17, 7, 15)
+    assert logica.inicio_pela_hora(time(8, 30), agora) == agora
+
+
+def test_resumo_jejuns():
+    from datetime import datetime
+    assert logica.resumo_jejuns(db.carregar_jejuns()) == {'total': 0, 'cumpridos': 0, 'media_horas': 0}
+    db.iniciar_jejum('16:8', 16, datetime(2026, 11, 15, 20, 0))
+    db.encerrar_jejum(1, datetime(2026, 11, 16, 14, 0))  # 18 h: cumpriu
+    db.iniciar_jejum('16:8', 16, datetime(2026, 11, 16, 20, 0))
+    db.encerrar_jejum(2, datetime(2026, 11, 17, 8, 0))  # 12 h: não cumpriu
+    assert logica.resumo_jejuns(db.carregar_jejuns()) == {'total': 2, 'cumpridos': 1, 'media_horas': 15}

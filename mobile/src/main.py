@@ -18,8 +18,10 @@ import flet as ft  # noqa: E402
 import db  # noqa: E402
 import tema  # noqa: E402
 from telas.adicionar import PRATOS, TelaAdicionar, TelaNovoPrato  # noqa: E402
+from telas.backup import TelaBackup  # noqa: E402
 from telas.historico import TelaHistorico  # noqa: E402
 from telas.hoje import TelaHoje  # noqa: E402
+from telas.jejum import TelaJejum  # noqa: E402
 from telas.perfil import TelaPerfil  # noqa: E402
 from telas.treino import TelaTreino  # noqa: E402
 
@@ -65,10 +67,12 @@ def main(page: ft.Page):
     print(f'Banco em uso: {db.CAMINHO_BANCO}')
 
     area = ft.Container(expand=True)
-    hoje = TelaHoje(page, ao_adicionar=lambda refeicao: abrir_adicionar(refeicao))
+    hoje = TelaHoje(page, ao_adicionar=lambda refeicao: abrir_adicionar(refeicao),
+                    ao_jejum=lambda: abrir_secundaria(tela_jejum))
     historico = TelaHistorico(page)
     treino = TelaTreino(page)
-    perfil = TelaPerfil(page)
+    perfil = TelaPerfil(page, ao_jejum=lambda: abrir_secundaria(tela_jejum),
+                        ao_backup=lambda: abrir_secundaria(tela_backup))
 
     def mostrar(indice):
         if indice == 0:
@@ -92,6 +96,14 @@ def main(page: ft.Page):
 
     def abrir_novo_prato():
         area.content = novo_prato.abrir()
+
+    def abrir_secundaria(tela):
+        # Jejum e Backup abrem por cima das abas, sem a barra de baixo (a seta volta para a aba)
+        barra.visible = False
+        area.content = tela.abrir()
+
+    tela_jejum = TelaJejum(page, ao_voltar=lambda: voltar_para_abas())
+    tela_backup = TelaBackup(page, ao_voltar=lambda: voltar_para_abas())
 
     adicionar = TelaAdicionar(page, ao_voltar=voltar_para_abas, ao_novo_prato=abrir_novo_prato)
     # Depois de salvar (ou voltar) do prato novo, reabre Adicionar já na aba Meus pratos

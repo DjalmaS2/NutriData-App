@@ -4,6 +4,7 @@ import flet as ft
 import db
 import exercicios
 import horario
+import jejum
 import metas
 import tema
 from formatos import REFEICOES, num
@@ -23,9 +24,10 @@ def data_por_extenso(dia):
 
 
 class TelaHoje:
-    def __init__(self, page: ft.Page, ao_adicionar):
+    def __init__(self, page: ft.Page, ao_adicionar, ao_jejum):
         self.page = page
         self.ao_adicionar = ao_adicionar  # função chamada com o nome da refeição
+        self.ao_jejum = ao_jejum          # abre a tela de Jejum
         self.coluna = ft.Column(scroll=ft.ScrollMode.AUTO, spacing=16, expand=True)
         self.raiz = ft.Container(content=self.coluna, padding=ft.Padding.symmetric(vertical=20, horizontal=20),
                                  expand=True)
@@ -40,6 +42,7 @@ class TelaHoje:
         self.coluna.controls = [
             self._cabecalho(dia, historico),
             self._resumo(df_dia, perfil, dia),
+            *self._jejum(),
             self._agua(dia, perfil),
             ft.Row(
                 [tema.titulo('Diário', 22, semi=True),
@@ -131,6 +134,25 @@ class TelaHoje:
             ft.Row([anel, ft.Column(conta, spacing=10, expand=True)], spacing=18),
             ft.Row(macros, spacing=12),
         ], spacing=18), raio=24, padding=20)
+
+    def _jejum(self):
+        """Cartão pequeno quando há um jejum em andamento (toque abre a tela de Jejum)."""
+        ativo = db.jejum_ativo()
+        if ativo is None:
+            return []
+        horas = jejum.horas_decorridas(ativo['inicio'], horario.agora())
+        cumpriu = horas >= ativo['meta_horas']
+        return [ft.Container(
+            ft.Row([ft.Icon(ft.Icons.TIMER_OUTLINED, color=tema.VERDE_ESCURO),
+                    ft.Column([tema.texto(f"Jejum {ativo['protocolo']} em andamento", 14, 'negrito'),
+                               tema.texto('Meta alcançada!' if cumpriu else
+                                          f"{min(horas / ativo['meta_horas'], 1):.0%} da meta", 12,
+                                          cor=tema.TEXTO_SUAVE)], spacing=0, expand=True),
+                    tema.titulo(jejum.formatar_duracao(horas), 22),
+                    ft.Icon(ft.Icons.CHEVRON_RIGHT, color=tema.TEXTO_SUAVE)], spacing=12),
+            bgcolor=tema.VERDE_CLARO, border_radius=20, padding=ft.Padding.symmetric(vertical=12, horizontal=16),
+            ink=True, on_click=lambda e: self.ao_jejum(),
+        )]
 
     def _agua(self, dia, perfil):
         meta_ml = metas.meta_agua_ml(perfil['peso_kg'] if perfil else None)

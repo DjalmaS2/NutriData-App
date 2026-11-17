@@ -256,3 +256,22 @@ def confirmar(page, titulo, mensagem, rotulo, ao_confirmar):
 
 def avisar(page, mensagem):
     page.show_dialog(ft.SnackBar(ft.Text(mensagem)))
+
+
+def cabecalho(titulo, ao_voltar):
+    return ft.Row([ft.IconButton(ft.Icons.ARROW_BACK_IOS_NEW, icon_color=tema.TEXTO, tooltip='Voltar',
+                                 on_click=lambda e: ao_voltar()),
+                   tema.titulo(titulo, 24)], spacing=4)
+
+
+def rodape(botao):
+    return ft.Container(botao, padding=ft.Padding.only(left=20, right=20, top=12, bottom=16),
+                        bgcolor=tema.CARTAO, border=ft.Border.only(top=ft.BorderSide(1, tema.BORDA)))
+
+
+def pagina_secundaria(titulo, ao_voltar, controles):
+    """Tela aberta por cima das abas (Jejum, Backup): seta de voltar, título e o conteúdo rolando."""
+    return ft.Column([
+        ft.Container(cabecalho(titulo, ao_voltar), padding=ft.Padding.only(left=8, top=12, right=12)),
+        ft.ListView(controles, spacing=16, expand=True, padding=ft.Padding.only(left=20, right=20, top=8, bottom=20)),
+    ], spacing=0, expand=True)

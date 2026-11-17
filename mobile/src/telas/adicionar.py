@@ -9,20 +9,10 @@ import horario
 import tema
 from formatos import REFEICOES, num
 from logica import ler_gramas, prato_como_produto, refeicao_pelo_horario, somar_ingredientes
-from telas.componentes import BuscaTaco, PainelPorcao, campo, item_alimento, pilulas, segmentos
+from telas.componentes import (BuscaTaco, PainelPorcao, cabecalho, campo, item_alimento, pilulas, rodape,
+                               segmentos)
 
 BUSCAR, CODIGO, PRATOS = 'Buscar', 'Código de barras', 'Meus pratos'
-
-
-def cabecalho(titulo, ao_voltar):
-    return ft.Row([ft.IconButton(ft.Icons.ARROW_BACK_IOS_NEW, icon_color=tema.TEXTO, tooltip='Voltar',
-                                 on_click=lambda e: ao_voltar()),
-                   tema.titulo(titulo, 24)], spacing=4)
-
-
-def rodape(botao):
-    return ft.Container(botao, padding=ft.Padding.only(left=20, right=20, top=12, bottom=16),
-                        bgcolor=tema.CARTAO, border=ft.Border.only(top=ft.BorderSide(1, tema.BORDA)))
 
 
 def botao_principal(rotulo, ao_clicar, cor=tema.VERDE_ESCURO):

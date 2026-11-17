@@ -18,7 +18,10 @@ import flet as ft  # noqa: E402
 import db  # noqa: E402
 import tema  # noqa: E402
 from telas.adicionar import PRATOS, TelaAdicionar, TelaNovoPrato  # noqa: E402
+from telas.historico import TelaHistorico  # noqa: E402
 from telas.hoje import TelaHoje  # noqa: E402
+from telas.perfil import TelaPerfil  # noqa: E402
+from telas.treino import TelaTreino  # noqa: E402
 
 
 def caminho_banco():
@@ -52,20 +55,6 @@ ABAS = [
 INDICE_ADICIONAR = 2
 
 
-def em_breve(nome, etapa):
-    """Tela provisória para o que ainda vai ser feito."""
-    return ft.Container(
-        expand=True,
-        alignment=ft.Alignment.CENTER,
-        padding=24,
-        content=ft.Column(
-            [tema.titulo(nome, 26), tema.texto(f'Chega na etapa {etapa}.', cor=tema.TEXTO_SUAVE)],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            tight=True,
-        ),
-    )
-
-
 def main(page: ft.Page):
     page.title = 'NutriData'
     tema.aplicar(page)
@@ -77,16 +66,19 @@ def main(page: ft.Page):
 
     area = ft.Container(expand=True)
     hoje = TelaHoje(page, ao_adicionar=lambda refeicao: abrir_adicionar(refeicao))
+    historico = TelaHistorico(page)
+    treino = TelaTreino(page)
+    perfil = TelaPerfil(page)
 
     def mostrar(indice):
         if indice == 0:
             area.content = hoje.construir()
         elif indice == 1:
-            area.content = em_breve('Histórico', 3)
+            area.content = historico.construir()
         elif indice == 3:
-            area.content = em_breve('Treino', 3)
+            area.content = treino.construir()
         elif indice == 4:
-            area.content = em_breve('Perfil', 3)
+            area.content = perfil.construir()
 
     def voltar_para_abas():
         # Sai de Adicionar / Novo prato e volta para a aba que estava aberta (já atualizada)

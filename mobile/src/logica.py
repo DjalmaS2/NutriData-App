@@ -1,4 +1,7 @@
 # Pequenas regras do app mobile que não dependem do Flet (por isso dá para testar no pytest)
+from datetime import timedelta
+
+import metas
 from formatos import REFEICOES
 
 
@@ -38,3 +41,71 @@ def prato_como_produto(prato, nutrientes):
 def somar_ingredientes(ingredientes, nutrientes):
     """Soma os nutrientes de uma lista de ingredientes (cada um com os valores já da porção)."""
     return {n: sum(float(i.get(n, 0)) for i in ingredientes) for n in nutrientes}
+
+
+# --- Metas e perfil ---
+META_PADRAO = 2000  # kcal por dia quando o perfil ainda não foi preenchido
+
+# Limites aceitos no formulário do perfil (os mesmos do app web)
+LIMITES_PERFIL = {'idade': (14, 100), 'peso_kg': (30, 300), 'altura_cm': (100, 230)}
+NOMES_CAMPOS = {'idade': 'Idade', 'peso_kg': 'Peso', 'altura_cm': 'Altura', 'peso_meta': 'Meta de peso'}
+
+
+def meta_do_dia(perfil):
+    """Meta calórica (sem exercícios) pelo perfil, ou a padrão."""
+    return round(metas.calcular_meta(perfil)['meta']) if perfil else META_PADRAO
+
+
+def validar_perfil(textos):
+    """Converte os campos digitados do perfil (texto) em números.
+
+    textos: dict com idade, peso_kg, altura_cm e peso_meta (este pode ficar vazio).
+    Retorna (valores, erros): erros é um dict campo -> mensagem (vazio se deu tudo certo).
+    """
+    valores, erros = {}, {}
+    for campo in ['idade', 'peso_kg', 'altura_cm', 'peso_meta']:
+        texto = str(textos.get(campo) or '').strip()
+        if campo == 'peso_meta' and not texto:
+            valores[campo] = None  # meta de peso é opcional
+            continue
+        numero = ler_gramas(texto)  # mesmo formato: aceita vírgula, precisa ser maior que zero
+        minimo, maximo = LIMITES_PERFIL.get(campo, LIMITES_PERFIL['peso_kg'])
+        if numero is None or not minimo <= numero <= maximo:
+            erros[campo] = f'De {minimo} a {maximo}'
+            continue
+        valores[campo] = int(round(numero)) if campo == 'idade' else numero
+    return valores, erros
+
+
+# --- Histórico ---
+def calorias_por_dia(historico, hoje, dias):
+    """Lista de (data, kcal) dos últimos `dias` dias até hoje; dias sem registro entram com 0."""
+    somas = historico.groupby('data_apenas')['calorias'].sum().to_dict() if not historico.empty else {}
+    periodo = [hoje - timedelta(days=n) for n in range(dias - 1, -1, -1)]
+    return [(dia, float(somas.get(dia, 0))) for dia in periodo]
+
+
+def resumo_periodo(por_dia, meta):
+    """Média (só dos dias com registro), dias registrados e dias dentro da meta."""
+    registrados = [kcal for _, kcal in por_dia if kcal > 0]
+    return {
+        'media': sum(registrados) / len(registrados) if registrados else 0,
+        'dias_registrados': len(registrados),
+        'dentro_da_meta': sum(1 for kcal in registrados if kcal <= meta),
+    }
+
+
+def texto_previsao(semanas, hoje):
+    """'cerca de 12 semanas (por volta de 25/01/2027)'"""
+    data = hoje + timedelta(weeks=semanas)
+    quanto = 'menos de 1 semana' if semanas < 1 else f'cerca de {semanas:.0f} semanas'
+    return f'{quanto} (por volta de {data:%d/%m/%Y})'
+
+
+# --- Treino ---
+def resumo_semana(atividades, hoje):
+    """Dias com treino, minutos e kcal dos últimos 7 dias (atividades: DataFrame do db)."""
+    inicio = hoje - timedelta(days=6)
+    semana = atividades[(atividades['data'] >= inicio) & (atividades['data'] <= hoje)]
+    return {'dias': int(semana['data'].nunique()), 'minutos': float(semana['minutos'].sum()),
+            'kcal': float(semana['kcal'].sum())}

@@ -7,7 +7,7 @@ import horario
 import metas
 import tema
 from formatos import REFEICOES, num
-from logica import ler_gramas
+from logica import ler_gramas, meta_do_dia
 
 DIAS_SEMANA = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
 MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto',
@@ -78,7 +78,7 @@ class TelaHoje:
         return ft.Row(partes, alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
     def _resumo(self, df_dia, perfil, dia):
-        meta = round(metas.calcular_meta(perfil)['meta']) if perfil else 2000
+        meta = meta_do_dia(perfil)
         gasto_exercicio = db.kcal_exercicio(dia)
         # Igual ao app web: somar os exercícios à meta é uma opção do perfil
         somar = bool(perfil and perfil.get('somar_exercicio'))

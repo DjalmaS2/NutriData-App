@@ -20,7 +20,11 @@ mobile/
     logica.py            regras sem Flet (testadas em tests/test_mobile.py)
     telas/hoje.py        tela Hoje
     telas/adicionar.py   Adicionar alimento (TACO, código de barras, Meus pratos) e Novo prato
+    telas/historico.py   Histórico: calorias por dia, peso e previsão da meta de peso
+    telas/treino.py      Treino: atividade + tempo -> calorias (dá para trocar a estimativa)
+    telas/perfil.py      Perfil: dados da pessoa e metas calculadas
     telas/componentes.py peças repetidas: busca na TACO, porção com prévia, botões
+    telas/graficos.py    gráficos de barras e de linha desenhados com o próprio Flet
     assets/fonts/        Fraunces e DM Sans (licença OFL, arquivos .txt ao lado)
 ```
 

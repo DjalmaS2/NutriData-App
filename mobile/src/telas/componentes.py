@@ -215,3 +215,44 @@ class PainelPorcao:
                 controle.value = num(porcao[chave], 0 if chave == 'calorias' else 1, enxuto=True)
         if self.ao_mudar:
             self.ao_mudar()
+
+
+def pagina(titulo, subtitulo, controles):
+    """Estrutura das abas: título grande, subtítulo e o conteúdo rolando."""
+    cabecalho = ft.Column([tema.titulo(titulo, 30), tema.texto(subtitulo, 13, cor=tema.TEXTO_SUAVE)], spacing=2)
+    return ft.ListView([cabecalho, *controles], spacing=16, expand=True,
+                       padding=ft.Padding.symmetric(vertical=20, horizontal=20))
+
+
+def secao(titulo, detalhe=None):
+    """Título de seção (Fraunces) com um texto pequeno à direita."""
+    partes = [tema.titulo(titulo, 22, semi=True)]
+    if detalhe:
+        partes.append(tema.texto(detalhe, 13, cor=tema.TEXTO_SUAVE))
+    return ft.Row(partes, alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.END)
+
+
+def lista_suspensa(rotulo, opcoes, valor, ao_mudar=None):
+    """Dropdown ocupando a largura toda."""
+    return ft.Row([ft.Dropdown(
+        label=rotulo, value=valor, options=[ft.DropdownOption(key=o, text=o) for o in opcoes],
+        expand=True, bgcolor=tema.CARTAO, border=tema.borda_campo(), on_select=ao_mudar,
+    )])
+
+
+def confirmar(page, titulo, mensagem, rotulo, ao_confirmar):
+    """Janela 'tem certeza?' com botão vermelho."""
+    def sim(e):
+        page.pop_dialog()
+        ao_confirmar()
+
+    page.show_dialog(ft.AlertDialog(
+        title=tema.titulo(titulo, 20, semi=True), content=tema.texto(mensagem),
+        actions=[ft.TextButton('Cancelar', on_click=lambda e: page.pop_dialog()),
+                 ft.Button(rotulo, on_click=sim, bgcolor=tema.EXCEDIDO, color=ft.Colors.WHITE)],
+        bgcolor=tema.FUNDO,
+    ))
+
+
+def avisar(page, mensagem):
+    page.show_dialog(ft.SnackBar(ft.Text(mensagem)))

@@ -45,3 +45,49 @@ def test_somar_ingredientes():
     assert total['proteinas'] == pytest.approx(8.6)
     assert total['fibras'] == pytest.approx(8.5)
     assert total['ferro'] == 0
+
+
+def test_meta_do_dia_sem_perfil_usa_padrao():
+    assert logica.meta_do_dia(None) == 2000
+
+
+def test_validar_perfil_aceita_virgula_e_meta_vazia():
+    valores, erros = logica.validar_perfil({'idade': '30', 'peso_kg': '80,5', 'altura_cm': '180', 'peso_meta': ''})
+    assert erros == {}
+    assert valores == {'idade': 30, 'peso_kg': 80.5, 'altura_cm': 180, 'peso_meta': None}
+
+
+def test_validar_perfil_aponta_campos_fora_do_limite():
+    _, erros = logica.validar_perfil({'idade': '5', 'peso_kg': 'abc', 'altura_cm': '180', 'peso_meta': '20'})
+    assert set(erros) == {'idade', 'peso_kg', 'peso_meta'}
+
+
+def test_calorias_por_dia_preenche_dias_vazios_e_resume():
+    from datetime import date
+    hoje = date(2026, 11, 17)
+    db.salvar_consumo('Almoço', 'Arroz', 100, {'calorias': 500})
+    historico = db.carregar_historico()
+    historico['data_apenas'] = hoje  # o registro acima entra como sendo de "hoje"
+    linhas = [historico, historico.assign(data_apenas=date(2026, 11, 15), calorias=2500)]
+    import pandas as pd
+    por_dia = logica.calorias_por_dia(pd.concat(linhas), hoje, 7)
+    assert len(por_dia) == 7
+    assert por_dia[0][0] == date(2026, 11, 11) and por_dia[-1] == (hoje, 500)
+    assert dict(por_dia)[date(2026, 11, 16)] == 0
+    resumo = logica.resumo_periodo(por_dia, meta=2000)
+    assert resumo == {'media': 1500, 'dias_registrados': 2, 'dentro_da_meta': 1}
+
+
+def test_texto_previsao():
+    from datetime import date
+    assert logica.texto_previsao(2, date(2026, 11, 17)) == 'cerca de 2 semanas (por volta de 01/12/2026)'
+    assert logica.texto_previsao(0.5, date(2026, 11, 17)).startswith('menos de 1 semana')
+
+
+def test_resumo_semana_ignora_treinos_antigos():
+    from datetime import date
+    hoje = date(2026, 11, 17)
+    db.registrar_atividade(hoje, 'Yoga', 30, 100)
+    db.registrar_atividade(date(2026, 11, 12), 'Pilates', 40, 120)
+    db.registrar_atividade(date(2026, 11, 1), 'Dança', 60, 300)  # fora dos 7 dias
+    assert logica.resumo_semana(db.carregar_atividades(), hoje) == {'dias': 2, 'minutos': 70, 'kcal': 220}
